@@ -1,0 +1,1131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Infrahub Architecture Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Sora:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f4f7f9; --surface:#ffffff; --sunk:#eaf0f4; --fg:#14212b; --muted:#566775; --line:#d3dce3;
+  --accent:#0d7a7e; --accent-soft:#dcf0f0; --seam:#a86b12; --seam-soft:#fbefd9;
+  --warn:#bf3b27; --warn-soft:#fbe4df; --ok:#2c8549;
+  --radius:9px; color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0d141a; --surface:#131c24; --sunk:#0a1015; --fg:#dce5eb; --muted:#8fa2b0; --line:#27353f;
+    --accent:#3fc3c1; --accent-soft:#11302f; --seam:#e3aa4c; --seam-soft:#34290f;
+    --warn:#f2806a; --warn-soft:#3b1c16; --ok:#5fc47f; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0d141a; --surface:#131c24; --sunk:#0a1015; --fg:#dce5eb; --muted:#8fa2b0; --line:#27353f;
+  --accent:#3fc3c1; --accent-soft:#11302f; --seam:#e3aa4c; --seam-soft:#34290f;
+  --warn:#f2806a; --warn-soft:#3b1c16; --ok:#5fc47f; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth; scroll-padding-top:16px}
+body{margin:0; background:var(--bg); color:var(--fg); font:15.5px/1.6 "IBM Plex Sans",system-ui,sans-serif; -webkit-text-size-adjust:100%}
+a{color:var(--accent)}
+code,.mono{font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:.86em}
+code{background:var(--sunk); border:1px solid var(--line); border-radius:4px; padding:0 .3em; overflow-wrap:anywhere}
+h1,h2,h3,h4{font-family:Sora,"IBM Plex Sans",sans-serif; line-height:1.25; margin:0}
+h2{font-size:1.45rem; margin:0 0 .6rem}
+h3{font-size:1.08rem; margin:1.4rem 0 .5rem}
+h4{font-size:1rem}
+p,ul,ol,dl{max-width:72ch}
+.wrap{max-width:1170px; margin:0 auto; padding:0 18px}
+header.top{padding:40px 0 24px; border-bottom:1px solid var(--line)}
+.eyebrow{font-family:"IBM Plex Mono",monospace; font-size:.78rem; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); margin-bottom:.6rem}
+header.top h1{font-size:clamp(1.6rem,4vw,2.3rem); margin-bottom:.8rem}
+.lede{font-size:1.06rem; max-width:72ch}
+.verdict{border:1px solid var(--accent); background:var(--accent-soft); border-radius:var(--radius); padding:10px 14px; margin:14px 0; max-width:80ch}
+.meta{display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; padding:0; list-style:none; max-width:none}
+.meta li{border:1px solid var(--line); background:var(--surface); border-radius:999px; padding:3px 11px; font-size:.82rem}
+.meta li b{font-family:"IBM Plex Mono",monospace; font-weight:500; color:var(--muted); margin-right:4px}
+.meta li.unv{border-color:var(--seam); background:var(--seam-soft)}
+.themebtn{float:right; font:500 .8rem "IBM Plex Mono",monospace; border:1px solid var(--line); background:var(--surface); color:var(--fg); border-radius:999px; padding:4px 12px; cursor:pointer}
+.layout{display:block}
+nav.toc{margin:18px 0 8px}
+nav.toc ul{list-style:none; padding:0; margin:0; display:flex; flex-wrap:wrap; gap:6px; max-width:none}
+nav.toc a{display:block; text-decoration:none; color:var(--fg); border:1px solid var(--line); background:var(--surface); border-radius:999px; padding:3px 11px; font-size:.84rem}
+nav.toc a:hover{border-color:var(--accent); color:var(--accent)}
+@media (min-width:1560px){
+  nav.toc{position:fixed; top:24px; left:max(12px, calc(50% - 585px - 200px)); width:180px; margin:0; max-height:calc(100vh - 48px); overflow:auto}
+  nav.toc ul{display:block}
+  nav.toc a{border:0; border-left:2px solid var(--line); border-radius:0; padding:4px 10px; background:none}
+  nav.toc a:hover{border-left-color:var(--accent)}
+}
+main section{padding:30px 0 10px; border-bottom:1px solid var(--line)}
+main section:last-child{border-bottom:0}
+.lead{font-weight:500}
+.grid{display:grid; gap:12px; grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.tk{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:14px}
+.tk h4{font-size:.98rem; margin-bottom:.35rem}
+.tk p{margin:0; font-size:.9rem; color:var(--muted)}
+.tk.risk{border-left:3px solid var(--seam)}
+.tk.good{border-left:3px solid var(--accent)}
+figure{margin:18px 0; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:12px}
+figcaption{font-size:.9rem; color:var(--muted); margin-top:8px; max-width:none}
+figcaption b{color:var(--fg)}
+.scroll{overflow-x:auto; -webkit-overflow-scrolling:touch}
+.scroll svg{display:block; height:auto}
+.legend{display:flex; flex-wrap:wrap; gap:14px; font-size:.82rem; color:var(--muted); margin-top:8px}
+.legend span{display:inline-flex; align-items:center; gap:6px}
+/* svg tokens */
+.box{fill:var(--surface); stroke:var(--line); stroke-width:1.2}
+.box-sunk{fill:var(--sunk)}
+.box-acc{fill:var(--accent-soft); stroke:var(--accent); stroke-width:1.4}
+.box-seam{fill:var(--seam-soft); stroke:var(--seam); stroke-width:1.3; stroke-dasharray:5 3}
+.box-dash{fill:var(--surface); stroke:var(--muted); stroke-width:1.2; stroke-dasharray:5 4}
+.box-term{fill:var(--surface); stroke:var(--fg); stroke-width:2.2}
+.panel{fill:none; stroke:var(--line); stroke-width:1; stroke-dasharray:2 3}
+.ln{stroke:var(--muted); stroke-width:1.3; fill:none}
+.ln-acc{stroke:var(--accent); stroke-width:1.8; fill:none}
+.ln-seam{stroke:var(--seam); stroke-width:1.7; stroke-dasharray:7 4; fill:none}
+.ln-dash{stroke-dasharray:4 4}
+.ln-bus{stroke:var(--muted); stroke-width:3.5; fill:none; opacity:.55}
+.ln-life{stroke:var(--line); stroke-width:1.2; stroke-dasharray:3 4}
+.ah-acc{fill:var(--accent)} .ah-mut{fill:var(--muted)} .ah-seam{fill:var(--seam)}
+.t-title{font:600 13px "IBM Plex Sans",sans-serif; fill:var(--fg)}
+.t-sub{font:11px "IBM Plex Mono",monospace; fill:var(--muted)}
+.t-mono{font:11.5px "IBM Plex Mono",monospace; fill:var(--fg)}
+.t-lbl{font:11.5px "IBM Plex Sans",sans-serif; fill:var(--fg)}
+.t-edge{font:11px "IBM Plex Mono",monospace; fill:var(--muted)}
+.t-head{font:600 12px "IBM Plex Mono",monospace; fill:var(--accent); letter-spacing:.04em}
+.t-tag{font:600 11px "IBM Plex Mono",monospace; fill:var(--accent)}
+.tag-bg{fill:var(--surface); stroke:var(--accent); stroke-width:1.2}
+.lbl-bg{fill:var(--surface)}
+/* lists & tables */
+ol.steps{padding-left:1.4em}
+ol.steps li{margin:.25rem 0}
+.tbl{overflow-x:auto; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); margin:14px 0}
+table{border-collapse:collapse; width:100%; font-size:.88rem}
+th{font:600 .74rem "IBM Plex Mono",monospace; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); text-align:left; background:var(--sunk)}
+th,td{padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top}
+tr:last-child td{border-bottom:0}
+td code{font-size:.8em}
+table.comp{min-width:880px}
+table.fit{min-width:760px}
+table.fit td{font-size:.84rem}
+table.fit td a{display:inline-block; margin:1px 4px 1px 0}
+details.adr{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); margin:8px 0; padding:0 14px}
+details.adr summary{cursor:pointer; padding:10px 0; font-weight:600}
+details.adr[open] summary{border-bottom:1px solid var(--line); margin-bottom:8px}
+details.adr dl{display:grid; grid-template-columns:110px 1fr; gap:4px 12px; margin:6px 0 12px; font-size:.9rem}
+details.adr dt{font:600 .74rem "IBM Plex Mono",monospace; text-transform:uppercase; color:var(--muted); padding-top:3px}
+details.adr dd{margin:0}
+.cards{display:grid; gap:12px; grid-template-columns:repeat(auto-fill,minmax(320px,1fr))}
+.card{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:14px; scroll-margin-top:16px}
+.card:target{outline:2px solid var(--accent)}
+.card h4{margin:.35rem 0 .45rem; font-size:.98rem}
+.card p{margin:.3rem 0; font-size:.88rem}
+.card dl{display:grid; grid-template-columns:96px 1fr; gap:3px 10px; font-size:.84rem; margin:.5rem 0 0}
+.card dt{font:600 .7rem "IBM Plex Mono",monospace; text-transform:uppercase; color:var(--muted); padding-top:2px}
+.card dd{margin:0}
+.pill{display:inline-block; font:600 .7rem "IBM Plex Mono",monospace; text-transform:uppercase; letter-spacing:.05em; border-radius:999px; padding:2px 9px; border:1px solid}
+.v-adopt{color:var(--ok); border-color:var(--ok)}
+.v-adapt{color:var(--accent); border-color:var(--accent); background:var(--accent-soft)}
+.v-avoid{color:var(--warn); border-color:var(--warn); background:var(--warn-soft)}
+.v-watch{color:var(--seam); border-color:var(--seam); background:var(--seam-soft)}
+.s-high{color:var(--warn); border-color:var(--warn); background:var(--warn-soft)}
+.s-med{color:var(--seam); border-color:var(--seam); background:var(--seam-soft)}
+.s-low{color:var(--muted); border-color:var(--line)}
+.ap{display:grid; grid-template-columns:62px 1fr; gap:10px; padding:12px 0; border-bottom:1px solid var(--line)}
+.ap:last-child{border-bottom:0}
+.ap h4{font-size:.95rem; margin-bottom:.2rem}
+.ap p{margin:.15rem 0; font-size:.88rem}
+.ev{color:var(--muted); font-size:.82rem}
+.inferred{font-style:italic; color:var(--seam)}
+.na{color:var(--muted)}
+.callout{border:1px solid var(--seam); background:var(--seam-soft); border-radius:var(--radius); padding:10px 14px; margin:12px 0; max-width:80ch; font-size:.92rem}
+.repo dl{display:grid; grid-template-columns:minmax(120px,190px) 1fr; gap:4px 14px; font-size:.9rem; max-width:none}
+.repo dt{font-family:"IBM Plex Mono",monospace; font-size:.84rem}
+.repo dd{margin:0}
+footer{padding:30px 0 50px; color:var(--muted); font-size:.82rem}
+@media (max-width:600px){
+  body{font-size:15px}
+  .cards{grid-template-columns:1fr}
+  .ap{grid-template-columns:1fr; gap:4px}
+  details.adr dl,.card dl{grid-template-columns:1fr}
+  .repo dl{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <marker id="ah-acc" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah-acc" d="M0,0 L10,5 L0,10 z"/></marker>
+    <marker id="ah-mut" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah-mut" d="M0,0 L10,5 L0,10 z"/></marker>
+    <marker id="ah-seam" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah-seam" d="M0,0 L10,5 L0,10 z"/></marker>
+  </defs>
+</svg>
+
+<header class="top">
+ <div class="wrap">
+  <button class="themebtn" id="themebtn" type="button" aria-label="Toggle colour theme">Theme</button>
+  <div class="eyebrow">Architecture review · infrahub</div>
+  <h1>Infrahub: a branchable, schema-driven graph for infrastructure data</h1>
+  <p class="lede">Infrahub (OpsMill) is a source-of-truth platform. You declare infrastructure kinds in YAML. It stores every object, attribute and relationship in Neo4j with branch and time stamps on each edge, and it generates the GraphQL API and CRUD UI from that schema. Change control is Git-like: branches, diffs, conflict resolution and proposed changes. Automation (generators, transforms, checks, webhooks) runs on Prefect workers.</p>
+  <div class="verdict"><b>Verdict for us:</b> adopt the data model (typed schema, temporal per-edge versioning, branch-scoped planning, pools, templates) for inventory and capacity planning. Do not adopt its runtime. It has no lifecycle state machine and no hardware, provisioning or health layer. Workers act as super-admin, and orchestration is Prefect fire-and-forget rather than durable workflows.</div>
+  <ul class="meta">
+   <li><b>SHA</b>c49e5a4</li>
+   <li><b>last commit</b>2026-09-29</li>
+   <li><b>version</b>1.11.3 (CHANGELOG, compose)</li>
+   <li><b>langs</b>Python ≈431k lines · TS/TSX ≈106k · YAML ≈66k</li>
+   <li><b>license</b>Apache-2.0 (Community)</li>
+   <li><b>stack</b>FastAPI · Graphene · Neo4j · Prefect · RabbitMQ · Redis · React</li>
+   <li class="unv"><b>unverified</b>commit/contributor cadence (clone holds 52 squashed commits)</li>
+   <li class="unv"><b>unverified</b>python_sdk submodule not checked out</li>
+   <li class="unv"><b>unverified</b>Enterprise-only code (approvals, log forwarding) not in repo</li>
+  </ul>
+ </div>
+</header>
+
+<div class="wrap layout">
+<nav class="toc" aria-label="Sections">
+ <ul>
+  <li><a href="#one-screen">In one screen</a></li>
+  <li><a href="#topology">Topology</a></li>
+  <li><a href="#domain">Domain model</a></li>
+  <li><a href="#lifecycle">Lifecycle</a></li>
+  <li><a href="#flows">Flow traces</a></li>
+  <li><a href="#components">Components</a></li>
+  <li><a href="#decisions">Design decisions</a></li>
+  <li><a href="#answers">Questions answered</a></li>
+  <li><a href="#adoption">Adoption cards</a></li>
+  <li><a href="#fit">Fit matrix</a></li>
+  <li><a href="#antipatterns">Anti-patterns</a></li>
+  <li><a href="#docs-vs-code">Docs vs code</a></li>
+  <li><a href="#questions">Open questions</a></li>
+  <li><a href="#appendix">Appendix</a></li>
+ </ul>
+</nav>
+<main>
+
+<section id="one-screen">
+ <h2>In one screen</h2>
+ <p class="lead">This repo is a strong reference for the <em>data plane of truth</em> and a weak one for the <em>control plane</em>.</p>
+ <div class="grid">
+  <div class="tk good"><h4>Every edge is versioned, so branches and time travel come for free</h4><p>Edges carry <code>branch</code>, <code>from</code>, <code>to</code> and <code>from_user_id</code>. An update closes the old edge and adds a new one. A read is a filter over edges (<code>core/branch/models.py:387-436</code>).</p></div>
+  <div class="tk good"><h4>One YAML schema generates the API, the UI and the validators, per branch</h4><p>Each kind gets <code>{Kind}Create/Update/Upsert/Delete</code> mutations and generic list/detail/form pages. The GraphQL schema is rebuilt for each branch's schema hash (<code>graphql/manager.py:126-157</code>).</p></div>
+  <div class="tk good"><h4>Planning can happen on a branch and merge through a gated change</h4><p>Proposed changes run data integrity, schema integrity, generator and user checks. Each conflict needs a chosen side before merge (<code>proposed_change/tasks.py:244-344</code>).</p></div>
+  <div class="tk risk"><h4>There is no lifecycle state machine</h4><p>A device's status is a <code>Dropdown</code>. Nothing guards transitions synchronously. Trigger rules only react after commit (<code>actions/schema.py:268-318</code>).</p></div>
+  <div class="tk risk"><h4>Background work is authorised as a super-admin</h4><p>Workers call the API with the agent token and swap in the caller's account for attribution, after permissions were already loaded for the agent (<code>graphql/initialization.py:127</code>, <code>graphql/context.py:44</code>).</p></div>
+  <div class="tk risk"><h4>Plugins are schema extensions plus in-process Git Python, and the UI is closed</h4><p>Repository code is imported into the worker with no sandbox (<code>git/integrator.py:1986-1995</code>). Frontend routes are compiled in, and the only runtime UI hook is the menu.</p></div>
+ </div>
+</section>
+
+<section id="topology">
+ <h2>Topology</h2>
+ <p class="lead">This is a single-site, hub-and-spoke deployment. The API server and the Prefect workers both connect directly to the same Neo4j, Redis and broker. There are no per-site agents and nothing talks to hardware.</p>
+ <figure>
+  <div class="scroll">
+  <svg viewBox="0 0 1100 600" width="1100" height="600" style="min-width:1100px;width:100%" role="img" aria-labelledby="cap-topo">
+   <!-- clients -->
+   <rect class="box" x="20" y="20" width="180" height="56" rx="8"/>
+   <text class="t-title" x="110" y="44" text-anchor="middle">Web UI</text>
+   <text class="t-sub" x="110" y="62" text-anchor="middle">React SPA, schema-driven</text>
+   <rect class="box" x="220" y="20" width="180" height="56" rx="8"/>
+   <text class="t-title" x="310" y="44" text-anchor="middle">infrahubctl · SDK</text>
+   <text class="t-sub" x="310" y="62" text-anchor="middle">same GraphQL / REST</text>
+   <rect class="box-dash" x="420" y="20" width="200" height="56" rx="8"/>
+   <text class="t-title" x="520" y="44" text-anchor="middle">External MCP server</text>
+   <text class="t-sub" x="520" y="62" text-anchor="middle">docs only · inferred</text>
+   <rect class="box" x="660" y="20" width="180" height="56" rx="8"/>
+   <text class="t-title" x="750" y="44" text-anchor="middle">Identity provider</text>
+   <text class="t-sub" x="750" y="62" text-anchor="middle">LDAP · OIDC · OAuth2</text>
+   <!-- server -->
+   <rect class="box-acc" x="120" y="130" width="380" height="110" rx="9"/>
+   <text class="t-title" x="136" y="152">infrahub-server (FastAPI, gunicorn ×4)</text>
+   <text class="t-sub" x="136" y="173">/graphql/{branch} · per-branch schema</text>
+   <text class="t-sub" x="136" y="190">/api/* REST · schema load · diff</text>
+   <text class="t-sub" x="136" y="207">admission (CoDel) · JWT / API key</text>
+   <text class="t-sub" x="136" y="224">mutation → Node.save → Cypher</text>
+   <!-- prefect -->
+   <rect class="box" x="620" y="130" width="260" height="110" rx="9"/>
+   <text class="t-title" x="636" y="152">task-manager (Prefect server)</text>
+   <text class="t-sub" x="636" y="173">86 WorkflowDefinitions</text>
+   <text class="t-sub" x="636" y="190">events + automations</text>
+   <text class="t-sub" x="636" y="207">(= trigger rules, webhooks)</text>
+   <text class="t-sub" x="636" y="224">run state · task logs</text>
+   <!-- git -->
+   <rect class="box" x="920" y="130" width="160" height="56" rx="8"/>
+   <text class="t-title" x="1000" y="154" text-anchor="middle">Git remotes</text>
+   <text class="t-sub" x="1000" y="172" text-anchor="middle">schemas · generators</text>
+   <!-- worker -->
+   <rect class="box" x="620" y="300" width="260" height="80" rx="9"/>
+   <text class="t-title" x="636" y="322">task-worker ×N (Prefect)</text>
+   <text class="t-sub" x="636" y="343">generators · transforms · checks</text>
+   <text class="t-sub" x="636" y="360">merge · diff · git sync</text>
+   <!-- webhook targets -->
+   <rect class="box" x="920" y="310" width="160" height="56" rx="8"/>
+   <text class="t-title" x="1000" y="334" text-anchor="middle">Webhook targets</text>
+   <text class="t-sub" x="1000" y="352" text-anchor="middle">HMAC-signed POST</text>
+   <!-- bus + stores -->
+   <line class="ln-bus" x1="110" y1="430" x2="910" y2="430"/>
+   <text class="t-edge" x="870" y="420" text-anchor="end">shared state: server and workers connect directly</text>
+   <line class="ln" x1="120" y1="430" x2="120" y2="460"/>
+   <line class="ln" x1="330" y1="430" x2="330" y2="460"/>
+   <line class="ln" x1="520" y1="430" x2="520" y2="460"/>
+   <line class="ln" x1="710" y1="430" x2="710" y2="460"/>
+   <line class="ln" x1="900" y1="430" x2="900" y2="460"/>
+   <rect class="box-acc" x="20" y="460" width="200" height="64" rx="8"/>
+   <text class="t-title" x="120" y="484" text-anchor="middle">Neo4j (source of truth)</text>
+   <text class="t-sub" x="120" y="502" text-anchor="middle">data + schema + diffs</text>
+   <text class="t-sub" x="120" y="516" text-anchor="middle">temporal, branched edges</text>
+   <rect class="box" x="250" y="460" width="160" height="64" rx="8"/>
+   <text class="t-title" x="330" y="486" text-anchor="middle">Redis / NATS KV</text>
+   <text class="t-sub" x="330" y="506" text-anchor="middle">locks · cache</text>
+   <rect class="box" x="440" y="460" width="160" height="64" rx="8"/>
+   <text class="t-title" x="520" y="486" text-anchor="middle">RabbitMQ / NATS</text>
+   <text class="t-sub" x="520" y="506" text-anchor="middle">broadcast · RPC only</text>
+   <rect class="box" x="630" y="460" width="160" height="64" rx="8"/>
+   <text class="t-title" x="710" y="486" text-anchor="middle">Postgres</text>
+   <text class="t-sub" x="710" y="506" text-anchor="middle">Prefect runs + events</text>
+   <rect class="box" x="820" y="460" width="160" height="64" rx="8"/>
+   <text class="t-title" x="900" y="486" text-anchor="middle">Object storage</text>
+   <text class="t-sub" x="900" y="506" text-anchor="middle">artifacts · local / S3</text>
+   <!-- edges -->
+   <line class="ln-acc" x1="110" y1="76" x2="196" y2="128" marker-end="url(#ah-acc)"/>
+   <line class="ln-acc" x1="310" y1="76" x2="310" y2="128" marker-end="url(#ah-acc)"/>
+   <line class="ln-acc ln-dash" x1="500" y1="76" x2="446" y2="128" marker-end="url(#ah-acc)"/>
+   <line class="ln" x1="500" y1="140" x2="698" y2="78" marker-end="url(#ah-mut)"/>
+   <text class="t-edge" x="612" y="96">SSO</text>
+   <line class="ln" x1="500" y1="200" x2="618" y2="200" marker-end="url(#ah-mut)"/>
+   <text class="t-edge" x="560" y="192" text-anchor="middle">flows · events</text>
+   <line class="ln ln-dash" x1="750" y1="300" x2="750" y2="242" marker-end="url(#ah-mut)"/>
+   <text class="t-edge" x="758" y="276">poll work queues</text>
+   <polyline class="ln-seam" points="620,340 420,340 420,242" marker-end="url(#ah-seam)"/>
+   <text class="t-edge" x="436" y="332">SDK as agent (super-admin)</text>
+   <line class="ln" x1="880" y1="316" x2="998" y2="188" marker-end="url(#ah-mut)"/>
+   <text class="t-edge" x="962" y="258">clone · fetch</text>
+   <line class="ln" x1="880" y1="338" x2="918" y2="338" marker-end="url(#ah-mut)"/>
+   <line class="ln-acc" x1="310" y1="240" x2="310" y2="430"/>
+   <line class="ln-acc" x1="750" y1="380" x2="750" y2="430"/>
+   <!-- legend -->
+   <line class="ln-acc" x1="20" y1="566" x2="60" y2="566"/><text class="t-edge" x="68" y="570">request / data path</text>
+   <line class="ln" x1="220" y1="566" x2="260" y2="566"/><text class="t-edge" x="268" y="570">internal call</text>
+   <line class="ln-seam" x1="380" y1="566" x2="420" y2="566"/><text class="t-edge" x="428" y="570">risk: identity boundary</text>
+   <rect class="box-dash" x="600" y="557" width="34" height="18" rx="4"/><text class="t-edge" x="642" y="570">not in this repo (docs only)</text>
+   <rect class="box-acc" x="840" y="557" width="34" height="18" rx="4"/><text class="t-edge" x="882" y="570">authoritative state</text>
+  </svg>
+  </div>
+  <figcaption id="cap-topo"><b>Everything shares one Neo4j and one lock store.</b> Workers also call back into the API as the agent account. No component runs at a remote site or talks to BMCs. Sources: <code>docker-compose.yml</code> (services), <code>workers/infrahub_async.py:159-165</code> (direct DB session), <code>docker-compose.yml:370</code> (worker token), <code>docs/docs/overview/build-with-ai/index.mdx:19,105-111</code> (MCP, docs only).</figcaption>
+ </figure>
+</section>
+
+<section id="domain">
+ <h2>Domain model</h2>
+ <p class="lead">Every kind uses the same meta-model: a <code>Node</code> vertex, one <code>Attribute</code> vertex per field and one <code>Relationship</code> vertex per link. Versioning lives on the edges. Their <code>InfraDevice</code> ≈ our node. Their <code>Interface</code> ≈ our NIC port. Their resource pools ≈ our IP, ASN and VLAN allocators.</p>
+ <figure>
+  <div class="scroll">
+  <svg viewBox="0 0 1100 520" width="1100" height="520" style="min-width:1100px;width:100%" role="img" aria-labelledby="cap-dom">
+   <rect class="panel" x="10" y="10" width="520" height="500" rx="10"/>
+   <text class="t-head" x="26" y="34">STORAGE META-MODEL (EVERY KIND)</text>
+   <rect class="box" x="230" y="48" width="120" height="40" rx="7"/>
+   <text class="t-title" x="290" y="66" text-anchor="middle">Root</text>
+   <text class="t-sub" x="290" y="81" text-anchor="middle">graph_version</text>
+   <rect class="box-acc" x="40" y="130" width="180" height="54" rx="8"/>
+   <text class="t-title" x="130" y="152" text-anchor="middle">Node</text>
+   <text class="t-sub" x="130" y="170" text-anchor="middle">:Node:InfraDevice:…</text>
+   <rect class="box" x="300" y="110" width="190" height="44" rx="7"/>
+   <text class="t-title" x="395" y="129" text-anchor="middle">Attribute</text>
+   <text class="t-sub" x="395" y="145" text-anchor="middle">name=serial</text>
+   <rect class="box" x="300" y="190" width="190" height="44" rx="7"/>
+   <text class="t-title" x="395" y="209" text-anchor="middle">AttributeValue</text>
+   <text class="t-sub" x="395" y="225" text-anchor="middle">value · indexed or not</text>
+   <rect class="box" x="300" y="262" width="190" height="40" rx="7"/>
+   <text class="t-title" x="395" y="279" text-anchor="middle">Boolean</text>
+   <text class="t-sub" x="395" y="294" text-anchor="middle">is_protected flag</text>
+   <rect class="box" x="40" y="300" width="180" height="54" rx="8"/>
+   <text class="t-title" x="130" y="322" text-anchor="middle">Relationship</text>
+   <text class="t-sub" x="130" y="340" text-anchor="middle">name=rack__device</text>
+   <rect class="box" x="300" y="330" width="190" height="44" rx="7"/>
+   <text class="t-title" x="395" y="349" text-anchor="middle">Node (peer)</text>
+   <text class="t-sub" x="395" y="365" text-anchor="middle">:Node:InfraRack</text>
+   <line class="ln" x1="130" y1="130" x2="236" y2="90" marker-end="url(#ah-mut)"/>
+   <text class="t-edge" x="198" y="124">IS_PART_OF</text>
+   <line class="ln" x1="220" y1="150" x2="298" y2="133" marker-end="url(#ah-mut)"/>
+   <text class="t-edge" x="226" y="178">HAS_ATTRIBUTE</text>
+   <line class="ln" x1="395" y1="154" x2="395" y2="188" marker-end="url(#ah-mut)"/>
+   <text class="t-edge" x="402" y="176">HAS_VALUE</text>
+   <polyline class="ln" points="490,132 512,132 512,282 492,282" marker-end="url(#ah-mut)"/>
+   <text class="t-edge" x="506" y="252" text-anchor="end">IS_PROTECTED</text>
+   <line class="ln" x1="130" y1="184" x2="130" y2="298" marker-end="url(#ah-mut)"/>
+   <text class="t-edge" x="138" y="246">IS_RELATED</text>
+   <line class="ln" x1="300" y1="352" x2="222" y2="332" marker-end="url(#ah-mut)"/>
+   <text class="t-edge" x="228" y="374">IS_RELATED</text>
+   <rect class="box-acc" x="30" y="396" width="480" height="64" rx="8"/>
+   <text class="t-title" x="46" y="416">Every edge carries</text>
+   <text class="t-mono" x="46" y="434">branch · branch_level · status</text>
+   <text class="t-mono" x="46" y="451">from · to · from_user_id · to_user_id</text>
+   <text class="t-edge" x="26" y="484">+ HAS_SOURCE / HAS_OWNER to any Node, per attribute</text>
+   <text class="t-edge" x="26" y="500">+ IS_RESERVED{identifier} from pools (global branch)</text>
+
+   <rect class="panel" x="550" y="10" width="540" height="500" rx="10"/>
+   <text class="t-head" x="566" y="34">OUR FLEET AS INFRAHUB SCHEMA (SKETCH)</text>
+   <rect class="box" x="570" y="50" width="170" height="44" rx="7"/>
+   <text class="t-title" x="655" y="69" text-anchor="middle">Site</text>
+   <text class="t-sub" x="655" y="85" text-anchor="middle">LocationSite</text>
+   <rect class="box" x="570" y="130" width="170" height="44" rx="7"/>
+   <text class="t-title" x="655" y="149" text-anchor="middle">Rack</text>
+   <text class="t-sub" x="655" y="165" text-anchor="middle">InfraRack</text>
+   <rect class="box-acc" x="570" y="215" width="170" height="60" rx="8"/>
+   <text class="t-title" x="655" y="235" text-anchor="middle">GPU node</text>
+   <text class="t-sub" x="655" y="252" text-anchor="middle">status: Dropdown</text>
+   <text class="t-sub" x="655" y="267" text-anchor="middle">(no transition guards)</text>
+   <rect class="box" x="570" y="340" width="170" height="44" rx="7"/>
+   <text class="t-title" x="655" y="359" text-anchor="middle">PDU</text>
+   <text class="t-sub" x="655" y="375" text-anchor="middle">device kind</text>
+   <rect class="box-dash" x="820" y="46" width="250" height="44" rx="7"/>
+   <text class="t-title" x="945" y="65" text-anchor="middle">TemplateGpuNode</text>
+   <text class="t-sub" x="945" y="81" text-anchor="middle">generate_template: true</text>
+   <rect class="box-dash" x="820" y="110" width="250" height="44" rx="7"/>
+   <text class="t-title" x="945" y="129" text-anchor="middle">IP / Number pool</text>
+   <text class="t-sub" x="945" y="145" text-anchor="middle">IS_RESERVED{identifier}</text>
+   <rect class="box" x="820" y="184" width="250" height="34" rx="7"/>
+   <text class="t-lbl" x="945" y="205" text-anchor="middle">GPU ×8 · serial, PCI address</text>
+   <rect class="box" x="820" y="228" width="250" height="34" rx="7"/>
+   <text class="t-lbl" x="945" y="249" text-anchor="middle">NIC port ×N · Interface</text>
+   <rect class="box" x="820" y="272" width="250" height="34" rx="7"/>
+   <text class="t-lbl" x="945" y="293" text-anchor="middle">PSU ×2</text>
+   <rect class="box" x="820" y="340" width="250" height="34" rx="7"/>
+   <text class="t-lbl" x="945" y="361" text-anchor="middle">PDU outlet</text>
+   <rect class="box" x="820" y="410" width="250" height="34" rx="7"/>
+   <text class="t-lbl" x="945" y="431" text-anchor="middle">Leaf switch port</text>
+   <line class="ln-acc" x1="655" y1="130" x2="655" y2="96" marker-end="url(#ah-acc)"/>
+   <text class="t-edge" x="648" y="117" text-anchor="end">Parent</text>
+   <line class="ln-acc" x1="655" y1="215" x2="655" y2="176" marker-end="url(#ah-acc)"/>
+   <text class="t-edge" x="648" y="200" text-anchor="end">Parent</text>
+   <polyline class="ln-acc" points="570,362 556,362 556,152 568,152" marker-end="url(#ah-acc)"/>
+   <line class="ln" x1="740" y1="245" x2="818" y2="201" marker-end="url(#ah-mut)"/>
+   <line class="ln" x1="740" y1="245" x2="818" y2="245" marker-end="url(#ah-mut)"/>
+   <line class="ln" x1="740" y1="245" x2="818" y2="289" marker-end="url(#ah-mut)"/>
+   <text class="t-edge" x="748" y="310">Component</text>
+   <line class="ln" x1="740" y1="362" x2="818" y2="357" marker-end="url(#ah-mut)"/>
+   <text class="t-edge" x="748" y="384">Component</text>
+   <line class="ln" x1="945" y1="340" x2="945" y2="308" marker-end="url(#ah-mut)"/>
+   <text class="t-edge" x="952" y="328">feeds (Generic)</text>
+   <polyline class="ln" points="1070,245 1082,245 1082,427 1072,427" marker-end="url(#ah-mut)"/>
+   <text class="t-edge" x="1076" y="398" text-anchor="end">cable (Generic)</text>
+   <line class="ln-acc ln-dash" x1="820" y1="68" x2="742" y2="222" marker-end="url(#ah-acc)"/>
+   <line class="ln-acc ln-dash" x1="820" y1="140" x2="742" y2="238" marker-end="url(#ah-acc)"/>
+   <text class="t-edge" x="566" y="474">Authoritative: the default branch in Neo4j.</text>
+   <text class="t-edge" x="566" y="490">Branches are proposals. Diffs, events and GraphQL types are derived.</text>
+  </svg>
+  </div>
+  <div class="legend">
+   <span><svg width="40" height="10"><line class="ln-acc" x1="0" y1="5" x2="40" y2="5"/></svg>Parent (hierarchy, cascade-capable)</span>
+   <span><svg width="40" height="10"><line class="ln" x1="0" y1="5" x2="40" y2="5"/></svg>Component / Generic relationship</span>
+   <span><svg width="40" height="10"><line class="ln-acc ln-dash" x1="0" y1="5" x2="40" y2="5"/></svg>create-time only: template copy, pool allocation</span>
+   <span><svg width="30" height="14"><rect class="box-acc" x="1" y="1" width="28" height="12" rx="3"/></svg>authoritative vertex or edge data</span>
+  </div>
+  <figcaption id="cap-dom"><b>Physical and allocated state share one graph. Provenance is per attribute, not per object.</b> Left: layout from <code>core/query/node.py:326-338,464-546</code> and <code>core/constants/database.py:6-14</code>. Right: our entities expressed with their relationship kinds (<code>core/constants/__init__.py:318-326</code>) and <code>models/examples/extension_rack.yml</code>, <code>extension_power.yml</code>. The right-hand side is a sketch, not shipped schema.</figcaption>
+ </figure>
+ <h3>What this means for physical vs logical state</h3>
+ <ul>
+  <li><b>They don't separate physical facts from allocated state structurally.</b> Instead each attribute carries <code>source</code> and <code>owner</code> edges (<code>core/query/node.py:333-338</code>), so a serial set by discovery and a role set by a planner can coexist on one object with different provenance. Reconciliation against reality is <span class="na">not addressed</span>: no discovery or drift code exists in this repo. Their integrations under <code>models/examples/{netbox,nautobot,ipfabric,slurpit}</code> are schema mappings only.</li>
+  <li><b>Branch support is set per attribute.</b> <code>aware</code> fields are versioned per branch, <code>agnostic</code> fields live on the global branch, and <code>local</code> fields are never merged (<code>core/constants/__init__.py:174-177</code>; bulk merge filters to <code>"aware"</code>, <code>core/diff/query/bulk_merge.py:68</code>). For us this is how operational state (lifecycle, health) could stay out of planning branches.</li>
+  <li><b>Uniqueness is enforced by the application, not Neo4j.</b> There are indexes only (<code>core/graph/index.py:7-40</code>). A query check runs under a distributed lock named from the hashed values (<code>core/node/lock_utils.py:136-181</code>).</li>
+  <li><b>The schema itself is graph data</b> (<code>SchemaNode</code>/<code>SchemaAttribute</code>, <code>core/schema/definitions/internal.py:533-857</code>), so it is branched, diffed and migrated like data. About 80 graph migrations live in <code>core/migrations/graph/</code>.</li>
+ </ul>
+</section>
+
+<section id="lifecycle">
+ <h2>Lifecycle</h2>
+ <p class="lead">No resource in Infrahub has a device-style lifecycle. The only explicit state machines are for change control: <code>Branch.status</code> and <code>ProposedChange.state</code>. The branch one is the better-built of the two and is shown below.</p>
+ <div class="callout"><b>Maps to our node lifecycle:</b> nothing. A GPU node's <code>racked → provisioning → validating → available</code> would be a <code>Dropdown</code> attribute (for example <code>models/base/dcim.yml:32-48</code> has active/provisioning/maintenance/drained) with no transition table and no guards. Attribute validation covers regex, length, enum and choices only (<code>core/attribute.py:275-318</code>). Number min/max is enforced only in strict mode (<code>core/attribute.py:310-311</code>).</div>
+ <figure>
+  <div class="scroll">
+  <svg viewBox="0 0 900 390" width="900" height="390" style="min-width:900px;width:100%" role="img" aria-labelledby="cap-life">
+   <rect class="box" x="40" y="40" width="170" height="44" rx="22"/>
+   <text class="t-title" x="125" y="67" text-anchor="middle">NEED_REBASE</text>
+   <rect class="box" x="240" y="40" width="220" height="44" rx="22"/>
+   <text class="t-title" x="350" y="67" text-anchor="middle">NEED_UPGRADE_REBASE</text>
+   <rect class="box-acc" x="130" y="180" width="150" height="44" rx="22"/>
+   <text class="t-title" x="205" y="207" text-anchor="middle">OPEN</text>
+   <rect class="box-acc" x="400" y="180" width="150" height="44" rx="22"/>
+   <text class="t-title" x="475" y="207" text-anchor="middle">MERGING</text>
+   <rect class="box-term" x="700" y="180" width="150" height="44" rx="22"/>
+   <text class="t-title" x="775" y="207" text-anchor="middle">MERGED</text>
+   <rect class="box-seam" x="390" y="310" width="170" height="44" rx="22"/>
+   <text class="t-title" x="475" y="337" text-anchor="middle">MERGE_FAILED</text>
+   <rect class="box-term" x="30" y="310" width="160" height="44" rx="22"/>
+   <text class="t-title" x="110" y="337" text-anchor="middle">DELETING</text>
+   <!-- transitions -->
+   <line class="ln-acc" x1="280" y1="202" x2="398" y2="202" marker-end="url(#ah-acc)"/>
+   <line class="ln-acc" x1="550" y1="202" x2="698" y2="202" marker-end="url(#ah-acc)"/>
+   <line class="ln-seam" x1="475" y1="224" x2="475" y2="308" marker-end="url(#ah-seam)"/>
+   <polyline class="ln-seam" points="390,332 230,332 230,226" marker-end="url(#ah-seam)"/>
+   <line class="ln" x1="150" y1="180" x2="150" y2="86" marker-end="url(#ah-mut)"/>
+   <line class="ln ln-dash" x1="190" y1="84" x2="190" y2="178" marker-end="url(#ah-mut)"/>
+   <line class="ln" x1="250" y1="180" x2="250" y2="86" marker-end="url(#ah-mut)"/>
+   <line class="ln ln-dash" x1="272" y1="84" x2="272" y2="178" marker-end="url(#ah-mut)"/>
+   <line class="ln" x1="150" y1="224" x2="150" y2="308" marker-end="url(#ah-mut)"/>
+   <!-- tags -->
+   <g><rect class="tag-bg" x="322" y="182" width="30" height="17" rx="8"/><text class="t-tag" x="337" y="195" text-anchor="middle">T1</text></g>
+   <g><rect class="tag-bg" x="610" y="182" width="30" height="17" rx="8"/><text class="t-tag" x="625" y="195" text-anchor="middle">T2</text></g>
+   <g><rect class="tag-bg" x="482" y="258" width="30" height="17" rx="8"/><text class="t-tag" x="497" y="271" text-anchor="middle">T3</text></g>
+   <g><rect class="tag-bg" x="300" y="314" width="30" height="17" rx="8"/><text class="t-tag" x="315" y="327" text-anchor="middle">T4</text></g>
+   <g><rect class="tag-bg" x="100" y="122" width="44" height="17" rx="8"/><text class="t-tag" x="122" y="135" text-anchor="middle">T5</text></g>
+   <g><rect class="tag-bg" x="196" y="122" width="30" height="17" rx="8"/><text class="t-tag" x="211" y="135" text-anchor="middle">T6</text></g>
+   <g><rect class="tag-bg" x="214" y="96" width="30" height="17" rx="8"/><text class="t-tag" x="229" y="109" text-anchor="middle">T7</text></g>
+   <g><rect class="tag-bg" x="278" y="140" width="30" height="17" rx="8"/><text class="t-tag" x="293" y="153" text-anchor="middle">T8</text></g>
+   <g><rect class="tag-bg" x="110" y="258" width="30" height="17" rx="8"/><text class="t-tag" x="125" y="271" text-anchor="middle">T9</text></g>
+   <!-- legend -->
+   <rect class="box-term" x="620" y="300" width="30" height="16" rx="8"/><text class="t-edge" x="658" y="312">terminal</text>
+   <line class="ln-seam" x1="620" y1="334" x2="650" y2="334"/><text class="t-edge" x="658" y="338">failure / recovery</text>
+   <line class="ln ln-dash" x1="620" y1="358" x2="650" y2="358"/><text class="t-edge" x="658" y="362">rebase back to OPEN</text>
+  </svg>
+  </div>
+  <figcaption id="cap-life"><b>Guards are scattered across mutation classes, a middleware allowlist and the merge orchestrator. There is no single transition table.</b> Enum: <code>core/branch/enums.py:4-14</code>.</figcaption>
+ </figure>
+ <div class="tbl"><table>
+  <thead><tr><th>#</th><th>Transition</th><th>Trigger</th><th>Guard</th><th>Code</th></tr></thead>
+  <tbody>
+   <tr><td>T1</td><td>OPEN → MERGING</td><td>BranchMerge / proposed-change merge</td><td>Global lock <code>merge.all_branches</code>. Status must be OPEN (the merge silently returns otherwise).</td><td><code>core/branch/tasks.py:370-395</code>, <code>core/merge/orchestrator.py:198-209</code></td></tr>
+   <tr><td>T2</td><td>MERGING → MERGED</td><td>Orchestrator completes</td><td>Conflicts and constraints are re-validated under the diff lock before any write.</td><td><code>core/merge/graph_merger.py:67-130</code>, <code>orchestrator.py:162-173</code></td></tr>
+   <tr><td>T3</td><td>MERGING → MERGE_FAILED</td><td>Lock holder dead past a grace period</td><td>Heartbeat or lock liveness check.</td><td><code>core/merge/failure_identifier.py:89-102</code></td></tr>
+   <tr><td>T4</td><td>MERGE_FAILED → OPEN</td><td>Operator runs <code>infrahub recover merge</code></td><td>Range rollback since <code>merge_started_at</code>. Branch delete is blocked until then.</td><td><code>core/merge/failure_recoverer.py:107-141,285</code>, <code>graphql/mutations/branch.py:174</code></td></tr>
+   <tr><td>T5</td><td>OPEN → NEED_REBASE</td><td>Object type conversion of agnostic nodes</td><td>none</td><td><code>core/convert_object_type/object_conversion.py:177-185</code></td></tr>
+   <tr><td>T6</td><td>NEED_REBASE → OPEN</td><td>BranchRebase</td><td>Refuses any conflict, even a resolved one. Middleware allows only rebase, delete and PC create on NEED_REBASE.</td><td><code>core/branch/models.py:450</code>, <code>core/branch/tasks.py:186-193</code>, <code>graphql/middleware.py:9,32</code></td></tr>
+   <tr><td>T7 / T8</td><td>OPEN ⇄ NEED_UPGRADE_REBASE</td><td>Graph-version upgrade, then rebase</td><td>Merge rejects NEED_UPGRADE_REBASE.</td><td><code>core/branch/tasks.py:89-127</code>, <code>graphql/mutations/branch.py:391</code></td></tr>
+   <tr><td>T9</td><td>OPEN → DELETING</td><td>BranchDelete</td><td>Not while MERGE_FAILED.</td><td><code>graphql/mutations/branch.py:170-178,422</code></td></tr>
+  </tbody>
+ </table></div>
+ <p><b>ProposedChange</b> (OPEN, MERGING, MERGED, CLOSED, CANCELED) is weaker. <code>validate_state_transition</code> only restricts CLOSED (<code>proposed_change/constants.py:44-55</code>). <code>ProposedChangeMerge</code> checks OPEN and then sets MERGING without a lock (<code>graphql/mutations/proposed_change.py:479-485</code>). The UI's <code>ACTION_RULES</code> table only decides which buttons appear (<code>proposed_change/action_checker.py:158-205</code>).</p>
+</section>
+
+<section id="flows">
+ <h2>Flow traces</h2>
+ <p class="lead">Neither provisioning flow (a) nor health flow (b) exists in this repo. Below are the closest equivalents: onboarding a node from a template with pool allocations (≈a), a UI write (c), event-driven desired-state generation (≈d), and branch → proposed change → merge (the version-control core).</p>
+
+ <h3>F1 · Onboard a node from a template (closest to "a node being provisioned")</h3>
+ <figure>
+  <div class="scroll"><svg viewBox="0 0 1012 494" width="1012" height="494" role="img" aria-labelledby="cap-f1">
+<rect class="box box-sunk" x="24" y="8" width="180" height="46" rx="7"/>
+<text class="t-title" x="114.0" y="28" text-anchor="middle">Client</text>
+<text class="t-sub" x="114.0" y="45" text-anchor="middle">UI · SDK · CLI</text>
+<line class="ln-life" x1="114.0" y1="54" x2="114.0" y2="486"/>
+<rect class="box box-sunk" x="220" y="8" width="180" height="46" rx="7"/>
+<text class="t-title" x="310.0" y="28" text-anchor="middle">GraphQL mutation</text>
+<text class="t-sub" x="310.0" y="45" text-anchor="middle">mutations/main.py</text>
+<line class="ln-life" x1="310.0" y1="54" x2="310.0" y2="486"/>
+<rect class="box box-sunk" x="416" y="8" width="180" height="46" rx="7"/>
+<text class="t-title" x="506.0" y="28" text-anchor="middle">Node create</text>
+<text class="t-sub" x="506.0" y="45" text-anchor="middle">core/node/create.py</text>
+<line class="ln-life" x1="506.0" y1="54" x2="506.0" y2="486"/>
+<rect class="box box-sunk" x="612" y="8" width="180" height="46" rx="7"/>
+<text class="t-title" x="702.0" y="28" text-anchor="middle">Resource pool</text>
+<text class="t-sub" x="702.0" y="45" text-anchor="middle">resource_manager/*</text>
+<line class="ln-life" x1="702.0" y1="54" x2="702.0" y2="486"/>
+<rect class="box box-sunk" x="808" y="8" width="180" height="46" rx="7"/>
+<text class="t-title" x="898.0" y="28" text-anchor="middle">Neo4j</text>
+<text class="t-sub" x="898.0" y="45" text-anchor="middle">graph + locks</text>
+<line class="ln-life" x1="898.0" y1="54" x2="898.0" y2="486"/>
+<line class="ln-acc" x1="114.0" y1="96" x2="310.0" y2="96" marker-end="url(#ah-acc)"/>
+<rect class="lbl-bg" x="133.39999999999998" y="80" width="157.20000000000002" height="15" rx="3"/>
+<text class="t-lbl" x="212.0" y="91" text-anchor="middle">1. Create with template</text>
+<line class="ln" x1="310.0" y1="136" x2="898.0" y2="136" marker-end="url(#ah-mut)"/>
+<rect class="lbl-bg" x="496.6" y="120" width="214.8" height="15" rx="3"/>
+<text class="t-lbl" x="604.0" y="131" text-anchor="middle">2. multi-lock: pools, uniqueness</text>
+<line class="ln-acc" x1="310.0" y1="176" x2="506.0" y2="176" marker-end="url(#ah-acc)"/>
+<rect class="lbl-bg" x="326.2" y="160" width="163.60000000000002" height="15" rx="3"/>
+<text class="t-lbl" x="408.0" y="171" text-anchor="middle">3. open txn, create root</text>
+<path class="ln-acc" d="M506.0,202 h26 v14 h-24" marker-end="url(#ah-acc)"/>
+<rect class="lbl-bg" x="536.0" y="202" width="163.60000000000002" height="17" rx="3"/>
+<text class="t-lbl" x="540.0" y="215">4. walk subtemplate tree</text>
+<line class="ln-acc" x1="506.0" y1="256" x2="702.0" y2="256" marker-end="url(#ah-acc)"/>
+<rect class="lbl-bg" x="512.6" y="240" width="182.8" height="15" rx="3"/>
+<text class="t-lbl" x="604.0" y="251" text-anchor="middle">5. get_resource(identifier)</text>
+<line class="ln" x1="702.0" y1="296" x2="898.0" y2="296" marker-end="url(#ah-mut)"/>
+<rect class="lbl-bg" x="721.4" y="280" width="157.20000000000002" height="15" rx="3"/>
+<text class="t-lbl" x="800.0" y="291" text-anchor="middle">6. pool lock; reserved?</text>
+<line class="ln ln-dash" x1="898.0" y1="336" x2="702.0" y2="336" marker-end="url(#ah-mut)"/>
+<rect class="lbl-bg" x="718.2" y="320" width="163.60000000000002" height="15" rx="3"/>
+<text class="t-lbl" x="800.0" y="331" text-anchor="middle">7. existing or next free</text>
+<line class="ln-acc" x1="506.0" y1="376" x2="898.0" y2="376" marker-end="url(#ah-acc)"/>
+<rect class="lbl-bg" x="601.0" y="360" width="202.0" height="15" rx="3"/>
+<text class="t-lbl" x="702.0" y="371" text-anchor="middle">8. NodeCreateAllQuery per node</text>
+<path class="ln-seam" d="M310.0,402 h26 v14 h-24" marker-end="url(#ah-seam)"/>
+<rect class="lbl-bg" x="340.0" y="402" width="214.8" height="17" rx="3"/>
+<text class="t-lbl" x="344.0" y="415">9. commit; events after response</text>
+<line class="ln ln-dash" x1="310.0" y1="456" x2="114.0" y2="456" marker-end="url(#ah-mut)"/>
+<rect class="lbl-bg" x="139.8" y="440" width="144.4" height="15" rx="3"/>
+<text class="t-lbl" x="212.0" y="451" text-anchor="middle">10. node + components</text>
+</svg></div>
+  <figcaption id="cap-f1"><b>The whole component tree and its IP/number allocations are created in one transaction.</b> Allocation is idempotent per <code>identifier</code>. Events leave after the HTTP response.</figcaption>
+ </figure>
+ <ol class="steps">
+  <li><b>Client → GraphQL mutation.</b> <code>{Kind}Create</code> is sent with <code>object_template</code>. <code>InfrahubMutationMixin.mutate</code> dispatches on the class suffix (<code>graphql/mutations/main.py:154,176-179</code>).</li>
+  <li><b>Locks.</b> A multi-lock is taken over the root's <code>from_pool</code> pools (<code>core/node/lock_utils.py:93-104</code>) and over uniqueness-constraint hashes (<code>lock_utils.py:136-181</code>).</li>
+  <li><b>Transaction.</b> It opens at <code>core/node/create.py:538</code>. The root node is built from the template, and copied values are stamped <code>source=template.id</code> (<code>create.py:179-180</code>).</li>
+  <li><b>Subtemplate walk.</b> <code>handle_template_relationships</code> reads subtemplates one level at a time and creates components depth-first (<code>create.py:97-141,322-397</code>). For us, this is a BOM expanding into GPUs, NICs and PSUs.</li>
+  <li><b>Per-component allocation.</b> <code>_from_resource_pool</code> relationships call <code>get_resource</code> for each component (<code>create.py:233-283</code>).</li>
+  <li><b>Pool.</b> The pool takes a pool-scoped lock and looks up an existing reservation by <code>identifier</code>. If one exists it is returned (idempotent). Otherwise the pool allocates the next free resource and saves it (<code>core/node/resource_manager/ip_prefix_pool.py:45-103</code>).</li>
+  <li><b>Reservation edge.</b> <code>IS_RESERVED{identifier}</code> is written on the <em>global</em> branch, so it is visible to every branch (<code>core/query/resource_manager.py:159-171</code>).</li>
+  <li><b>Node write.</b> Each node is one Cypher statement, <code>NodeCreateAllQuery</code> (<code>core/query/node.py:161,545</code>).</li>
+  <li><b>Commit, then events.</b> Events are queued as Starlette BackgroundTasks after the response (<code>graphql/mutations/main.py:238</code>, <code>graphql/app.py:301</code>). A crash here loses them.</li>
+  <li><b>Not in code:</b> BMC/Redfish discovery, PXE, image or firmware, burn-in. Anything after "the record exists" is out of scope.</li>
+ </ol>
+ <p class="ev">Risk seen here: the pool lock is released when <code>get_resource</code> returns, but the transaction commits later, and mutation-level locks cover only root-level pools. Nested template allocations may therefore race (<span class="inferred">inferred; needs a concurrency test</span>).</p>
+
+ <h3>F2 · A user edits a device attribute (UI or CLI → the thing that changes)</h3>
+ <figure>
+  <div class="scroll"><svg viewBox="0 0 1100 454" width="1100" height="454" role="img" aria-labelledby="cap-f2">
+<rect class="box box-sunk" x="24" y="8" width="162" height="46" rx="7"/>
+<text class="t-title" x="105.0" y="28" text-anchor="middle">Web UI / SDK</text>
+<text class="t-sub" x="105.0" y="45" text-anchor="middle">Bearer JWT or API key</text>
+<line class="ln-life" x1="105.0" y1="54" x2="105.0" y2="446"/>
+<rect class="box box-sunk" x="202" y="8" width="162" height="46" rx="7"/>
+<text class="t-title" x="283.0" y="28" text-anchor="middle">infrahub-server</text>
+<text class="t-sub" x="283.0" y="45" text-anchor="middle">admission · auth</text>
+<line class="ln-life" x1="283.0" y1="54" x2="283.0" y2="446"/>
+<rect class="box box-sunk" x="380" y="8" width="162" height="46" rx="7"/>
+<text class="t-title" x="461.0" y="28" text-anchor="middle">GraphQL app</text>
+<text class="t-sub" x="461.0" y="45" text-anchor="middle">graphql/app.py</text>
+<line class="ln-life" x1="461.0" y1="54" x2="461.0" y2="446"/>
+<rect class="box box-sunk" x="558" y="8" width="162" height="46" rx="7"/>
+<text class="t-title" x="639.0" y="28" text-anchor="middle">Mutation + Node</text>
+<text class="t-sub" x="639.0" y="45" text-anchor="middle">main.py · node/</text>
+<line class="ln-life" x1="639.0" y1="54" x2="639.0" y2="446"/>
+<rect class="box box-sunk" x="736" y="8" width="162" height="46" rx="7"/>
+<text class="t-title" x="817.0" y="28" text-anchor="middle">Neo4j</text>
+<text class="t-sub" x="817.0" y="45" text-anchor="middle">temporal edges</text>
+<line class="ln-life" x1="817.0" y1="54" x2="817.0" y2="446"/>
+<rect class="box box-sunk" x="914" y="8" width="162" height="46" rx="7"/>
+<text class="t-title" x="995.0" y="28" text-anchor="middle">Events</text>
+<text class="t-sub" x="995.0" y="45" text-anchor="middle">Prefect + bus</text>
+<line class="ln-life" x1="995.0" y1="54" x2="995.0" y2="446"/>
+<line class="ln-acc" x1="105.0" y1="96" x2="283.0" y2="96" marker-end="url(#ah-acc)"/>
+<rect class="lbl-bg" x="109.0" y="80" width="170.0" height="15" rx="3"/>
+<text class="t-lbl" x="194.0" y="91" text-anchor="middle">1. POST /graphql/{branch}</text>
+<line class="ln-acc" x1="283.0" y1="136" x2="461.0" y2="136" marker-end="url(#ah-acc)"/>
+<rect class="lbl-bg" x="306.2" y="120" width="131.60000000000002" height="15" rx="3"/>
+<text class="t-lbl" x="372.0" y="131" text-anchor="middle">2. admit, then auth</text>
+<path class="ln-acc" d="M461.0,162 h26 v14 h-24" marker-end="url(#ah-acc)"/>
+<rect class="lbl-bg" x="491.0" y="162" width="182.8" height="17" rx="3"/>
+<text class="t-lbl" x="495.0" y="175">3. load perms, run checkers</text>
+<line class="ln-acc" x1="461.0" y1="216" x2="639.0" y2="216" marker-end="url(#ah-acc)"/>
+<rect class="lbl-bg" x="481.0" y="200" width="138.0" height="15" rx="3"/>
+<text class="t-lbl" x="550.0" y="211" text-anchor="middle">4. InfraDeviceUpdate</text>
+<path class="ln-acc" d="M639.0,242 h26 v14 h-24" marker-end="url(#ah-acc)"/>
+<rect class="lbl-bg" x="669.0" y="242" width="182.8" height="17" rx="3"/>
+<text class="t-lbl" x="673.0" y="255">5. lock + txn + constraints</text>
+<line class="ln-acc" x1="639.0" y1="296" x2="817.0" y2="296" marker-end="url(#ah-acc)"/>
+<rect class="lbl-bg" x="649.4" y="280" width="157.20000000000002" height="15" rx="3"/>
+<text class="t-lbl" x="728.0" y="291" text-anchor="middle">6. close edge, add edge</text>
+<line class="ln ln-dash" x1="817.0" y1="336" x2="639.0" y2="336" marker-end="url(#ah-mut)"/>
+<rect class="lbl-bg" x="684.6" y="320" width="86.80000000000001" height="15" rx="3"/>
+<text class="t-lbl" x="728.0" y="331" text-anchor="middle">7. committed</text>
+<line class="ln ln-dash" x1="639.0" y1="376" x2="105.0" y2="376" marker-end="url(#ah-mut)"/>
+<rect class="lbl-bg" x="280.6" y="360" width="182.8" height="15" rx="3"/>
+<text class="t-lbl" x="372.0" y="371" text-anchor="middle">8. HTTP 200 (response sent)</text>
+<line class="ln-seam" x1="639.0" y1="416" x2="995.0" y2="416" marker-end="url(#ah-seam)"/>
+<rect class="lbl-bg" x="735.2" y="400" width="163.60000000000002" height="15" rx="3"/>
+<text class="t-lbl" x="817.0" y="411" text-anchor="middle">9. BackgroundTasks: emit</text>
+</svg></div>
+  <figcaption id="cap-f2"><b>UI, CLI and SDK all take the same path.</b> Authorisation is per kind, and the "change" is an append-only edge swap. Nothing outside the database changes.</figcaption>
+ </figure>
+ <ol class="steps">
+  <li><b>ASGI stack.</b> CORS → admission (CoDel, client <code>X-Priority</code>) → GZip → Prometheus → CorrelationId (<code>server.py:217-246</code>). OpenTelemetry is set up at <code>server.py:163</code>.</li>
+  <li><b>Authentication.</b> <code>InfrahubGraphQLApp.__call__</code> accepts a JWT, API key or cookie, then resolves the branch (<code>graphql/app.py:119-136</code>).</li>
+  <li><b>Permissions.</b> They are loaded per request (<code>graphql/initialization.py:127-131</code>). The checker chain runs, ending in <code>ObjectPermissionChecker</code> with per-kind CRUD (<code>graphql/api/dependencies.py:27-41</code>; <code>graphql/auth/query_permission_checker/object_permission_checker.py:24-67</code>).</li>
+  <li><b>Branch-status middleware.</b> It blocks mutations on branches that are not writable (<code>graphql/middleware.py:15-37</code>).</li>
+  <li><b>Mutation.</b> <code>mutate_update</code> is wrapped in <code>@retry_db_transaction</code> (<code>graphql/mutations/main.py:322</code>). It takes a lock, opens a transaction, runs constraints and profiles, then calls <code>obj.save</code> (<code>main.py:286-372</code>).</li>
+  <li><b>Save.</b> <code>Node._update</code> issues one query per changed attribute or relationship, then recomputes HFID and display label (<code>core/node/__init__.py:1152-1192</code>).</li>
+  <li><b>Cypher.</b> The current <code>HAS_VALUE</code> edge is closed with <code>to</code>/<code>to_user_id</code> and a new edge is created (<code>core/query/attribute.py:85-99</code>).</li>
+  <li><b>Response, then events.</b> The response is returned, and then <code>InfrahubEventService.send</code> fans the event out to the bus, Prefect and log forwarding (<code>services/adapters/event/__init__.py:30-48</code>).</li>
+ </ol>
+
+ <h3>F3 · Event → trigger rule → generator (closest to "desired state reconciled")</h3>
+ <figure>
+  <div class="scroll"><svg viewBox="0 0 1100 374" width="1100" height="374" role="img" aria-labelledby="cap-f3">
+<rect class="box box-sunk" x="24" y="8" width="162" height="46" rx="7"/>
+<text class="t-title" x="105.0" y="28" text-anchor="middle">Mutation</text>
+<text class="t-sub" x="105.0" y="45" text-anchor="middle">any write</text>
+<line class="ln-life" x1="105.0" y1="54" x2="105.0" y2="366"/>
+<rect class="box box-sunk" x="202" y="8" width="162" height="46" rx="7"/>
+<text class="t-title" x="283.0" y="28" text-anchor="middle">Prefect events</text>
+<text class="t-sub" x="283.0" y="45" text-anchor="middle">automations</text>
+<line class="ln-life" x1="283.0" y1="54" x2="283.0" y2="366"/>
+<rect class="box box-sunk" x="380" y="8" width="162" height="46" rx="7"/>
+<text class="t-title" x="461.0" y="28" text-anchor="middle">action flow</text>
+<text class="t-sub" x="461.0" y="45" text-anchor="middle">actions/tasks.py</text>
+<line class="ln-life" x1="461.0" y1="54" x2="461.0" y2="366"/>
+<rect class="box box-sunk" x="558" y="8" width="162" height="46" rx="7"/>
+<text class="t-title" x="639.0" y="28" text-anchor="middle">generator-run</text>
+<text class="t-sub" x="639.0" y="45" text-anchor="middle">generators/tasks.py</text>
+<line class="ln-life" x1="639.0" y1="54" x2="639.0" y2="366"/>
+<rect class="box box-sunk" x="736" y="8" width="162" height="46" rx="7"/>
+<text class="t-title" x="817.0" y="28" text-anchor="middle">User generator</text>
+<text class="t-sub" x="817.0" y="45" text-anchor="middle">git repo code</text>
+<line class="ln-life" x1="817.0" y1="54" x2="817.0" y2="366"/>
+<rect class="box box-sunk" x="914" y="8" width="162" height="46" rx="7"/>
+<text class="t-title" x="995.0" y="28" text-anchor="middle">GraphQL API</text>
+<text class="t-sub" x="995.0" y="45" text-anchor="middle">agent token</text>
+<line class="ln-life" x1="995.0" y1="54" x2="995.0" y2="366"/>
+<line class="ln-acc" x1="105.0" y1="96" x2="283.0" y2="96" marker-end="url(#ah-acc)"/>
+<rect class="lbl-bg" x="112.19999999999999" y="80" width="163.60000000000002" height="15" rx="3"/>
+<text class="t-lbl" x="194.0" y="91" text-anchor="middle">1. infrahub.node.updated</text>
+<path class="ln-acc" d="M283.0,122 h26 v14 h-24" marker-end="url(#ah-acc)"/>
+<rect class="lbl-bg" x="313.0" y="122" width="144.4" height="17" rx="3"/>
+<text class="t-lbl" x="317.0" y="135">2. match trigger rule</text>
+<line class="ln-acc" x1="283.0" y1="176" x2="461.0" y2="176" marker-end="url(#ah-acc)"/>
+<rect class="lbl-bg" x="290.2" y="160" width="163.60000000000002" height="15" rx="3"/>
+<text class="t-lbl" x="372.0" y="171" text-anchor="middle">3. ExecuteWorkflow + ctx</text>
+<line class="ln-acc" x1="461.0" y1="216" x2="639.0" y2="216" marker-end="url(#ah-acc)"/>
+<rect class="lbl-bg" x="468.2" y="200" width="163.60000000000002" height="15" rx="3"/>
+<text class="t-lbl" x="550.0" y="211" text-anchor="middle">4. REQUEST_GENERATOR_RUN</text>
+<line class="ln-acc" x1="639.0" y1="256" x2="817.0" y2="256" marker-end="url(#ah-acc)"/>
+<rect class="lbl-bg" x="652.6" y="240" width="150.8" height="15" rx="3"/>
+<text class="t-lbl" x="728.0" y="251" text-anchor="middle">5. load_class(); run()</text>
+<line class="ln-seam" x1="817.0" y1="296" x2="995.0" y2="296" marker-end="url(#ah-seam)"/>
+<rect class="lbl-bg" x="824.2" y="280" width="163.60000000000002" height="15" rx="3"/>
+<text class="t-lbl" x="906.0" y="291" text-anchor="middle">6. read + upsert via SDK</text>
+<line class="ln ln-dash" x1="995.0" y1="336" x2="817.0" y2="336" marker-end="url(#ah-mut)"/>
+<rect class="lbl-bg" x="843.4" y="320" width="125.2" height="15" rx="3"/>
+<text class="t-lbl" x="906.0" y="331" text-anchor="middle">7. writes as agent</text>
+</svg></div>
+  <figcaption id="cap-f3"><b>Trigger rules are data compiled into Prefect automations.</b> The only built-in actions are "run generator" and "change group membership". The generator's writes come back as the agent account.</figcaption>
+ </figure>
+ <ol class="steps">
+  <li><b>Event.</b> A mutation emits <code>infrahub.node.updated</code>, carrying <code>context</code> in the payload (<code>graphql/mutations/main.py:51-80</code>).</li>
+  <li><b>Automation.</b> <code>CoreNodeTriggerRule</code> is compiled into a Prefect automation that matches kind, branch scope and attribute value, including <code>value_previous</code> (<code>actions/models.py:84-151</code>; <code>actions/schema.py:268-318</code>). It is synced by <code>configure_action_rules</code> (<code>actions/tasks.py:208-221</code>).</li>
+  <li><b>ExecuteWorkflow.</b> The action is <code>ACTION_RUN_GENERATOR</code>, with context templated from the event (<code>actions/models.py:152-168</code>).</li>
+  <li><b>Action flow.</b> It sets <code>client.request_context</code> (<code>actions/tasks.py:159-180</code>), then submits <code>REQUEST_GENERATOR_RUN</code> (<code>actions/tasks.py:244-316</code>).</li>
+  <li><b>generator-run.</b> It loads the user's class from the Git worktree with <code>load_class</code> and calls <code>run()</code> (<code>generators/tasks.py:37-110</code>, <code>:88</code>, <code>:103</code>).</li>
+  <li><b>Identity is dropped.</b> <code>RequestGeneratorRun</code> has no context field (<code>generators/models.py:18-33</code>), so writes are attributed to the agent. The proposed-change path does set context (<code>proposed_change/tasks.py:956</code>).</li>
+ </ol>
+ <p>Generators are idempotent "compute desired objects from a query, upsert them, prune the rest" routines. That is a reconcile loop over <em>records</em>, not over hardware. No timeouts, retries or idempotency keys are set at the flow level (<code>services/adapters/workflow/worker.py:84-122</code>).</p>
+
+ <h3>F4 · Branch → proposed change → merge (version-control core)</h3>
+ <figure>
+  <div class="scroll"><svg viewBox="0 0 1100 494" width="1100" height="494" role="img" aria-labelledby="cap-f4">
+<rect class="box box-sunk" x="24" y="8" width="162" height="46" rx="7"/>
+<text class="t-title" x="105.0" y="28" text-anchor="middle">Engineer / MCP</text>
+<text class="t-sub" x="105.0" y="45" text-anchor="middle">branch author</text>
+<line class="ln-life" x1="105.0" y1="54" x2="105.0" y2="486"/>
+<rect class="box box-sunk" x="202" y="8" width="162" height="46" rx="7"/>
+<text class="t-title" x="283.0" y="28" text-anchor="middle">Branch</text>
+<text class="t-sub" x="283.0" y="45" text-anchor="middle">core/branch</text>
+<line class="ln-life" x1="283.0" y1="54" x2="283.0" y2="486"/>
+<rect class="box box-sunk" x="380" y="8" width="162" height="46" rx="7"/>
+<text class="t-title" x="461.0" y="28" text-anchor="middle">Proposed change</text>
+<text class="t-sub" x="461.0" y="45" text-anchor="middle">proposed_change/</text>
+<line class="ln-life" x1="461.0" y1="54" x2="461.0" y2="486"/>
+<rect class="box box-sunk" x="558" y="8" width="162" height="46" rx="7"/>
+<text class="t-title" x="639.0" y="28" text-anchor="middle">Diff engine</text>
+<text class="t-sub" x="639.0" y="45" text-anchor="middle">core/diff</text>
+<line class="ln-life" x1="639.0" y1="54" x2="639.0" y2="486"/>
+<rect class="box box-sunk" x="736" y="8" width="162" height="46" rx="7"/>
+<text class="t-title" x="817.0" y="28" text-anchor="middle">Merge orchestrator</text>
+<text class="t-sub" x="817.0" y="45" text-anchor="middle">core/merge</text>
+<line class="ln-life" x1="817.0" y1="54" x2="817.0" y2="486"/>
+<rect class="box box-sunk" x="914" y="8" width="162" height="46" rx="7"/>
+<text class="t-title" x="995.0" y="28" text-anchor="middle">main</text>
+<text class="t-sub" x="995.0" y="45" text-anchor="middle">default branch</text>
+<line class="ln-life" x1="995.0" y1="54" x2="995.0" y2="486"/>
+<line class="ln-acc" x1="105.0" y1="96" x2="283.0" y2="96" marker-end="url(#ah-acc)"/>
+<rect class="lbl-bg" x="141.0" y="80" width="106.0" height="15" rx="3"/>
+<text class="t-lbl" x="194.0" y="91" text-anchor="middle">1. BranchCreate</text>
+<path class="ln-acc" d="M283.0,122 h26 v14 h-24" marker-end="url(#ah-acc)"/>
+<rect class="lbl-bg" x="313.0" y="122" width="182.8" height="17" rx="3"/>
+<text class="t-lbl" x="317.0" y="135">2. copy schema, stamp edges</text>
+<line class="ln-acc" x1="105.0" y1="176" x2="461.0" y2="176" marker-end="url(#ah-acc)"/>
+<rect class="lbl-bg" x="204.39999999999998" y="160" width="157.20000000000002" height="15" rx="3"/>
+<text class="t-lbl" x="283.0" y="171" text-anchor="middle">3. ProposedChangeCreate</text>
+<line class="ln-acc" x1="461.0" y1="216" x2="639.0" y2="216" marker-end="url(#ah-acc)"/>
+<rect class="lbl-bg" x="474.6" y="200" width="150.8" height="15" rx="3"/>
+<text class="t-lbl" x="550.0" y="211" text-anchor="middle">4. update diff, checks</text>
+<line class="ln ln-dash" x1="639.0" y1="256" x2="461.0" y2="256" marker-end="url(#ah-mut)"/>
+<rect class="lbl-bg" x="468.2" y="240" width="163.60000000000002" height="15" rx="3"/>
+<text class="t-lbl" x="550.0" y="251" text-anchor="middle">5. conflicts, validators</text>
+<line class="ln" x1="105.0" y1="296" x2="461.0" y2="296" marker-end="url(#ah-mut)"/>
+<rect class="lbl-bg" x="198.0" y="280" width="170.0" height="15" rx="3"/>
+<text class="t-lbl" x="283.0" y="291" text-anchor="middle">6. pick side per conflict</text>
+<line class="ln-acc" x1="461.0" y1="336" x2="817.0" y2="336" marker-end="url(#ah-acc)"/>
+<rect class="lbl-bg" x="566.8" y="320" width="144.4" height="15" rx="3"/>
+<text class="t-lbl" x="639.0" y="331" text-anchor="middle">7. merge: gate passed</text>
+<line class="ln" x1="817.0" y1="376" x2="639.0" y2="376" marker-end="url(#ah-mut)"/>
+<rect class="lbl-bg" x="652.6" y="360" width="150.8" height="15" rx="3"/>
+<text class="t-lbl" x="728.0" y="371" text-anchor="middle">8. re-validate at lock</text>
+<line class="ln-acc" x1="817.0" y1="416" x2="995.0" y2="416" marker-end="url(#ah-acc)"/>
+<rect class="lbl-bg" x="827.4" y="400" width="157.20000000000002" height="15" rx="3"/>
+<text class="t-lbl" x="906.0" y="411" text-anchor="middle">9. bulk merge + migrate</text>
+<line class="ln ln-dash" x1="817.0" y1="456" x2="283.0" y2="456" marker-end="url(#ah-mut)"/>
+<rect class="lbl-bg" x="490.6" y="440" width="118.80000000000001" height="15" rx="3"/>
+<text class="t-lbl" x="550.0" y="451" text-anchor="middle">10. status MERGED</text>
+</svg></div>
+  <figcaption id="cap-f4"><b>Merge is gated twice, at proposed-change level and again under the merge lock.</b> It is not atomic: it runs as several bulk transactions backed by range rollback.</figcaption>
+ </figure>
+ <ol class="steps">
+  <li><b>BranchCreate.</b> The origin schema is copied under a distributed lock. <code>BranchCreatedEvent</code> is emitted, and a git branch is created if <code>sync_with_git</code> is set (<code>core/branch/creator.py:55-90</code>).</li>
+  <li><b>Writes on the branch</b> stamp <code>branch=&lt;name&gt;</code> on new edges. Reads union main at <code>branched_from</code> with the branch at <code>at</code> (<code>core/branch/models.py:280-300,387-436</code>).</li>
+  <li><b>ProposedChangeCreate</b> submits <code>REQUEST_PROPOSED_CHANGE_PIPELINE</code> (<code>graphql/mutations/proposed_change.py:139-143</code>).</li>
+  <li><b>Pipeline.</b> Git conflict check first. Then diff update, artifacts, generators, data integrity, repository checks, schema integrity and user tests (<code>proposed_change/tasks.py:1179-1314</code>). The diff is stored as a graph: DiffRoot → DiffNode → DiffAttribute → DiffConflict (<code>core/diff/query/save.py</code>).</li>
+  <li><b>Conflicts.</b> A human picks a side (<code>core/diff/query/update_conflict_query.py:28</code>; <code>graphql/mutations/diff_conflict.py:56-77</code>).</li>
+  <li><b>Merge gate.</b> The injectable checker runs first (a no-op in Community). Every non-data validator must be SUCCESS and every conflict needs <code>keep_branch</code> (<code>proposed_change/tasks.py:244-344</code>).</li>
+  <li><b>merge_branch.</b> Takes the global lock and re-checks OPEN (<code>core/branch/tasks.py:370-395</code>). The orchestrator protects main, marks MERGING, re-validates, and runs bulk merge queries (<code>core/diff/merger/merger.py:100-138</code>). Schema migrations run at <code>merge_at</code> (<code>core/merge/orchestrator.py:119-143</code>).</li>
+  <li><b>MERGED.</b> Then events, the git merge (<em>after</em> MERGED, so the two can diverge), and a diff update for every open branch (<code>core/merge/post_merge.py:67-181</code>; <code>core/branch/tasks.py:608-625</code>).</li>
+ </ol>
+</section>
+
+<section id="components">
+ <h2>Key components</h2>
+ <p class="lead">Almost all the value is in the core graph layer and the schema system. The rest is conventional FastAPI + Prefect plumbing.</p>
+ <div class="tbl"><table class="comp">
+  <thead><tr><th>Component</th><th>Responsibility</th><th>Tech</th><th>Key files</th><th>Talks to</th></tr></thead>
+  <tbody>
+   <tr><td>API server</td><td>GraphQL and REST, auth, admission, schema load</td><td>FastAPI, Graphene, gunicorn</td><td><code>server.py</code>, <code>graphql/app.py</code>, <code>api/__init__.py:31-45</code></td><td>Neo4j, Redis, broker, Prefect</td></tr>
+   <tr><td>GraphQL manager</td><td>Generates types and mutations per branch schema hash</td><td>Graphene</td><td><code>graphql/manager.py:126-157,539-593</code>, <code>graphql/registry.py:194-212</code></td><td>Schema manager</td></tr>
+   <tr><td>Core graph layer</td><td>Node, attribute and relationship CRUD as temporal Cypher</td><td>Neo4j driver 6</td><td><code>core/node/__init__.py</code>, <code>core/attribute.py</code>, <code>core/query/node.py</code>, <code>core/query/attribute.py</code></td><td>Neo4j</td></tr>
+   <tr><td>Schema system</td><td>Load, validate, inherit and generate Profile/Template kinds; migrations</td><td>Pydantic</td><td><code>core/schema/schema_branch.py:722-792</code>, <code>core/schema/manager.py</code>, <code>core/validators/__init__.py:23-53</code>, <code>core/migrations/schema/__init__.py</code></td><td>Neo4j, locks</td></tr>
+   <tr><td>Diff and merge</td><td>Incremental diff stored as a graph, conflict detection, merge, rollback</td><td>Cypher bulk queries</td><td><code>core/diff/coordinator.py</code>, <code>core/diff/conflicts_enricher.py</code>, <code>core/merge/orchestrator.py</code>, <code>core/merge/failure_recoverer.py</code></td><td>Neo4j, locks, git</td></tr>
+   <tr><td>Proposed change</td><td>Pipeline of checks and gated merge</td><td>Prefect flows</td><td><code>proposed_change/tasks.py:1179-1314,244-344</code></td><td>Diff, generators, repos</td></tr>
+   <tr><td>Resource managers</td><td>IP prefix, address and number pools</td><td>Locks + reservation edges</td><td><code>core/node/resource_manager/*.py</code>, <code>core/query/resource_manager.py</code></td><td>Neo4j, locks</td></tr>
+   <tr><td>Workflow catalogue and workers</td><td>86 static flows; async worker</td><td>Prefect 3</td><td><code>workflows/catalogue.py</code>, <code>workflows/models.py:44-100</code>, <code>workers/infrahub_async.py</code></td><td>Prefect, Neo4j, API</td></tr>
+   <tr><td>Events, triggers, actions</td><td>Event types, trigger rules compiled into Prefect automations</td><td>Prefect events</td><td><code>events/</code>, <code>actions/models.py:84-245</code>, <code>trigger/</code>, <code>webhook/</code></td><td>Prefect, broker</td></tr>
+   <tr><td>Git integrator</td><td>Syncs repos and imports schema, queries, transforms, checks and generators</td><td>GitPython, importlib</td><td><code>git/integrator.py:356-445</code>, <code>git/repository.py</code></td><td>Git remotes, API</td></tr>
+   <tr><td>Permissions</td><td>Account → group → role → global or object permission</td><td>custom</td><td><code>permissions/</code>, <code>graphql/auth/query_permission_checker/</code></td><td>Neo4j</td></tr>
+   <tr><td>Locks</td><td>Distributed, re-entrant locks (no TTL by default)</td><td>Redis / NATS KV</td><td><code>lock.py:151-262</code>, <code>core/node/lock_utils.py</code>, <code>locks/cleaner.py</code></td><td>Redis/NATS</td></tr>
+   <tr><td>Frontend</td><td>Schema-driven generic CRUD; custom pages for core kinds</td><td>React 19, Vite</td><td><code>frontend/app/src/app/router.tsx</code>, <code>shared/components/form/dynamic-form.tsx</code></td><td>GraphQL/REST</td></tr>
+  </tbody>
+ </table></div>
+</section>
+
+<section id="decisions">
+ <h2>Key design decisions</h2>
+ <p class="lead">Two decisions drive everything else. Attributes are vertices, and versions are edge stamps. Together they give per-field provenance, branching and history, at the cost of read and write amplification.</p>
+ <details class="adr"><summary>D1 · Attribute-as-vertex property graph</summary><dl>
+  <dt>Decision</dt><dd>Each attribute and relationship is its own vertex, reached through versioned edges from the Node.</dd>
+  <dt>Alternatives</dt><dd>Properties on the node vertex; relational columns; JSON documents. <span class="inferred">The alternatives are not recorded in an ADR; inferred.</span></dd>
+  <dt>Why</dt><dd>Makes value, <code>source</code>, <code>owner</code> and <code>is_protected</code> versionable per field and per branch.</dd>
+  <dt>Cost</dt><dd>One query per changed field on update (<code>core/node/__init__.py:1161-1172</code>). Every read resolves edge versions hop by hop (<code>dev/knowledge/backend/query-pattern.md:228-256</code>).</dd>
+  <dt>Source</dt><dd><code>core/query/node.py:326-338</code>, <code>dev/knowledge/backend/database-schema.md</code></dd></dl></details>
+ <details class="adr"><summary>D2 · Branches as edge stamps, not database copies</summary><dl>
+  <dt>Decision</dt><dd>Branch data is stored in the same graph, with <code>branch</code>, <code>branch_level</code>, <code>from</code> and <code>to</code> on each edge. The depth limit is 2.</dd>
+  <dt>Alternatives</dt><dd>Clone the database per branch; event-sourced replay. <span class="inferred">Inferred.</span></dd>
+  <dt>Why</dt><dd>Branches are cheap to create, and a diff is a query over edges. Time travel falls out of the same filter.</dd>
+  <dt>Cost</dt><dd>Every query carries branch/time predicates. Rebase and rollback rewrite history (<code>core/branch/models.py:453-466</code>; <code>core/rollback.py:21-60</code>).</dd>
+  <dt>Source</dt><dd><code>core/branch/models.py:37,387-436</code></dd></dl></details>
+ <details class="adr"><summary>D3 · Schema stored as graph data and branched</summary><dl>
+  <dt>Decision</dt><dd>The schema lives in the <code>Schema</code> namespace as nodes. Each branch has its own schema and <code>schema_hash</code>. Merge performs a three-way schema diff and runs migrations.</dd>
+  <dt>Alternatives</dt><dd>Code-defined models (like NetBox or Nautobot); a single global schema.</dd>
+  <dt>Why</dt><dd>Users can evolve the model through the same review flow as data.</dd>
+  <dt>Source</dt><dd><code>core/schema/definitions/internal.py:533-857</code>, <code>core/merge/schema_analyzer.py:61-123</code></dd></dl></details>
+ <details class="adr"><summary>D4 · Generated user-facing schema contract (ADR 0010)</summary><dl>
+  <dt>Decision</dt><dd>Field visibility (<code>write ⊆ read ⊆ internal</code>) generates SDK models, and the server validates schema payloads through them.</dd>
+  <dt>Alternatives</dt><dd>Hand-maintained second model set (rejected because of drift).</dd>
+  <dt>Why</dt><dd>One definition feeds the server, the SDK and the published JSON schema.</dd>
+  <dt>Cost</dt><dd>Changes span two repositories, and the server depends on an SDK release.</dd>
+  <dt>Source</dt><dd><code>dev/adr/0010-generated-user-facing-schema-contract.md</code>, <code>api/schema.py:134-173</code></dd></dl></details>
+ <details class="adr"><summary>D5 · Prefect for async tasks and events (ADR 0002, 0003)</summary><dl>
+  <dt>Decision</dt><dd>All background work is a Prefect flow declared in a static catalogue. Events and automations use Prefect's event store.</dd>
+  <dt>Alternatives</dt><dd>The previous message-bus task execution (ADR 0004 describes the migration away from it).</dd>
+  <dt>Why</dt><dd>A pure-Python stack that is embeddable and testable, with a run UI and logs.</dd>
+  <dt>Cost</dt><dd>No durable-execution semantics, no idempotency keys, fire-and-forget submission (<code>services/adapters/workflow/worker.py:99-122</code>). ADR 0003 says Enterprise can inject workflows through dependency injection; Community has no hook.</dd>
+  <dt>Source</dt><dd><code>dev/adr/0003-asynchronous-tasks.md</code>, <code>workflows/catalogue.py</code></dd></dl></details>
+ <details class="adr"><summary>D6 · Message bus kept only for broadcast and RPC (ADR 0004)</summary><dl>
+  <dt>Decision</dt><dd>RabbitMQ or NATS handles registry refresh broadcasts and sub-second RPC such as <code>git.file.get</code>.</dd>
+  <dt>Why</dt><dd>Workflows cover everything else, and broadcasts need fan-out to every worker.</dd>
+  <dt>Source</dt><dd><code>dev/adr/0004-message-bus.md</code>, <code>services/adapters/message_bus/rabbitmq.py:138-157</code></dd></dl></details>
+ <details class="adr"><summary>D7 · Merge recovery by invariant-based range rollback, not a write log</summary><dl>
+  <dt>Decision</dt><dd>A merge is several transactions. On failure, every edge written since <code>merge_started_at</code> is reverted, either in-process or through <code>infrahub recover merge</code>.</dd>
+  <dt>Alternatives</dt><dd>A single transaction (too large); an undo log.</dd>
+  <dt>Why</dt><dd>Bulk merges exceed practical transaction size.</dd>
+  <dt>Cost</dt><dd>Correct only while the write-scoping invariants hold. Git is not reverted.</dd>
+  <dt>Source</dt><dd><code>core/merge/rollback_handler.py:63-108</code>, <code>core/merge/failure_recoverer.py</code>, <code>dev/knowledge/backend/merge-failure-recovery.md:100-117</code></dd></dl></details>
+ <details class="adr"><summary>D8 · Per-worker coordination-free admission control (ADR 0007–0009)</summary><dl>
+  <dt>Decision</dt><dd>Each worker runs CoDel with a DB-stress signal and a client-declared <code>X-Priority</code>. It sheds load with 429 and <code>Retry-After</code>.</dd>
+  <dt>Why</dt><dd>Protects Neo4j under bursts without shared state.</dd>
+  <dt>Source</dt><dd><code>api/admission/*</code>, <code>server.py:68-75,241</code>, <code>database/load_signal.py</code></dd></dl></details>
+</section>
+
+<section id="answers">
+ <h2>Questions answered</h2>
+ <p class="lead">Short answers to the brief. Items marked "not addressed" have no code in this repo.</p>
+ <div class="tbl"><table>
+  <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+  <tbody>
+   <tr><td>Core entities and where they live</td><td>User-defined kinds in YAML (for example <code>models/base/dcim.yml</code>), stored in Neo4j. Built-in kinds cover accounts, branches, repositories, pools, menus, triggers and webhooks (<code>core/schema/definitions/core/*.py</code>).</td></tr>
+   <tr><td>Authoritative vs projected</td><td>Authoritative: the default branch in Neo4j. Projected or cached: stored diffs, per-branch GraphQL schema, Prefect events (retention ~7 days per <code>dev/knowledge/backend/telemetry.md</code>, <span class="inferred">not verified in code</span>), artifacts in object storage.</td></tr>
+   <tr><td>Physical vs logical state</td><td>Not separated structurally. Per-attribute <code>source</code>/<code>owner</code> and per-attribute <code>branch_support</code> are the tools.</td></tr>
+   <tr><td>Discovery and reconciliation</td><td class="na">Not addressed. External integrations are schema mappings in <code>models/examples/</code> only.</td></tr>
+   <tr><td>State machine</td><td>Only for Branch and ProposedChange (see <a href="#lifecycle">Lifecycle</a>). Nothing for resources.</td></tr>
+   <tr><td>Orchestration style</td><td>Prefect flows plus event-triggered automations. Generators are record-level reconcilers.</td></tr>
+   <tr><td>Long, failure-prone steps</td><td>DB transient retries (<code>database/__init__.py:602-627</code>). Webhook retry is bounded (ADR 0015). Retry and cancel exist for webhook tasks only (ADR 0014, <code>graphql/mutations/task.py:143,177</code>). There are no flow timeouts or idempotency keys.</td></tr>
+   <tr><td>Bulk safety (batching, canaries)</td><td class="na">Not addressed for operations. For data: proposed-change checks, global merge lock and admission control.</td></tr>
+   <tr><td>IPMI / Redfish / PXE / images / firmware</td><td class="na">Not addressed.</td></tr>
+   <tr><td>Health signals, validation, burn-in</td><td class="na">Not addressed. "Checks" validate data in proposed changes, not hardware.</td></tr>
+   <tr><td>Metrics, logs and traces</td><td>Prometheus <code>/metrics</code> (<code>server.py:219,253</code>) and OTLP traces (<code>trace.py:70-93</code>). Trace context is not propagated across Prefect flow dispatch, only over NATS (<code>services/adapters/message_bus/nats.py:87-114</code>).</td></tr>
+   <tr><td>API style and versioning</td><td>GraphQL generated per branch plus REST under <code>/api</code>. There is no API versioning; the contract is the schema.</td></tr>
+   <tr><td>Plugin model</td><td>Runtime schema extensions, and Git repositories that ship transforms, checks, generators, queries, objects and menus. Workflows, actions, events and UI are not extensible. See <a href="#c-extensions">cards</a>.</td></tr>
+   <tr><td>AuthN / AuthZ / audit</td><td>JWT HS256, API keys, OIDC/OAuth2 PKCE and LDAP. Kind-level RBAC with branch-scoped decisions. No tenancy and no instance-level permissions. Audit comes from edge <code>from_user_id</code> plus events.</td></tr>
+   <tr><td>MCP / AI</td><td>None in the product code. The docs describe an external MCP server that writes on <code>mcp/session-*</code> branches and opens proposed changes, with no merge tool (<span class="inferred">docs only</span>).</td></tr>
+   <tr><td>Multi-site topology</td><td class="na">Not addressed. Single control plane, shared stores.</td></tr>
+   <tr><td>Deploy and upgrade</td><td>Docker Compose with Neo4j, RabbitMQ, Redis, Prefect and Postgres. <code>infrahub upgrade</code> runs graph migrations, then schema, then a branch rebase (<code>cli/upgrade.py:154-218</code>). On a stale graph the server only logs a warning at startup; it does not refuse to start (<code>server.py:125</code>, <code>database/graph.py:16-22</code>). Helm values are in <code>development/k8s/</code>; the chart is external.</td></tr>
+   <tr><td>Cadence</td><td>CHANGELOG lists 13 releases from v1.10.2 (2026-07-03) to v1.11.3 (2026-09-23), roughly weekly patches. Commit and contributor counts can't be measured from this clone.</td></tr>
+  </tbody>
+ </table></div>
+</section>
+
+<section id="adoption">
+ <h2>Adoption cards</h2>
+ <p class="lead">Take the modelling and change-control patterns. Rebuild the runtime patterns on Temporal with real identity propagation.</p>
+
+ <h3>Adopt</h3>
+ <div class="cards">
+  <article class="card" id="c-schema"><span class="pill v-adopt">Adopt</span><h4>Declarative schema with generics and typed relationship kinds</h4>
+   <p>Kinds are defined in YAML with <code>inherit_from</code> generics, 23 attribute kinds, and relationship kinds <code>Parent/Component/Generic/Attribute</code> with cardinality and <code>on_delete</code> cascade. Parent/Component graphs must be acyclic (<code>core/schema/schema_branch.py:1168-1207</code>; <code>core/constants/__init__.py:318-356</code>).</p>
+   <dl><dt>Maps to</dt><dd>inventory</dd><dt>Effort / risk</dt><dd>M. Risk: over-generic models. Keep a small fixed core (site, rack, node, GPU, NIC, PDU, CDU).</dd><dt>Portal fit</dt><dd>The schema is the plugin contract for entity types.</dd></dl></article>
+
+  <article class="card" id="c-branchsupport"><span class="pill v-adopt">Adopt</span><h4>Per-attribute branch support: aware, agnostic, local</h4>
+   <p>Each field declares whether it forks with branches, is global, or stays local and never merges. Bulk merge only moves <code>aware</code> data (<code>core/diff/query/bulk_merge.py:68</code>; <code>core/attribute.py:188-190</code>).</p>
+   <dl><dt>Maps to</dt><dd>inventory, lifecycle</dd><dt>Effort / risk</dt><dd>S, as a concept. Risk: users misunderstand why a planning branch can't change lifecycle state.</dd><dt>Temporal fit</dt><dd>Lifecycle and health fields are agnostic. Only the lifecycle workflow writes them, never a planning branch.</dd></dl></article>
+
+  <article class="card" id="c-pools"><span class="pill v-adopt">Adopt</span><h4>Identifier-keyed, idempotent pool allocation</h4>
+   <p><code>get_resource(identifier)</code> takes a pool lock. It returns an existing reservation for the same identifier or allocates the next free resource. The reservation is an <code>IS_RESERVED</code> edge on the global branch (<code>core/node/resource_manager/ip_prefix_pool.py:45-103</code>; <code>core/query/resource_manager.py:159-171</code>).</p>
+   <dl><dt>Maps to</dt><dd>provisioning, inventory</dd><dt>Effort / risk</dt><dd>S. Risk: releases. Their number reservations are never cleaned up (<code>resource_manager.py:391-397</code>).</dd><dt>Temporal fit</dt><dd>Use the workflow ID plus the node as the identifier, so activity retries return the same IP, ASN or VLAN.</dd></dl></article>
+
+  <article class="card" id="c-templates"><span class="pill v-adopt">Adopt</span><h4>Object templates that expand a component tree</h4>
+   <p><code>generate_template: true</code> creates <code>Template&lt;Kind&gt;</code> kinds. Instantiation creates components depth-first in one transaction, with per-component pool allocations and <code>source=template</code> provenance (<code>core/node/create.py:97-141,179-180,233-283</code>).</p>
+   <dl><dt>Maps to</dt><dd>inventory (BOM)</dd><dt>Effort / risk</dt><dd>M. Risk: copy-at-create means later template edits don't propagate. Add drift reporting of node vs SKU template.</dd><dt>Portal fit</dt><dd>"Add rack from SKU" is one action.</dd></dl></article>
+
+  <article class="card" id="c-provenance"><span class="pill v-adopt">Adopt</span><h4>Per-field provenance and actor on every change</h4>
+   <p>Every edge records <code>from_user_id</code>/<code>to_user_id</code>. Attributes can point <code>HAS_SOURCE</code>/<code>HAS_OWNER</code> to any node, such as a repository, a discovery job or a team (<code>core/query/node.py:258-268,333-338</code>).</p>
+   <dl><dt>Maps to</dt><dd>inventory, authz (audit)</dd><dt>Effort / risk</dt><dd>M. Risk: storage growth. Keep provenance on physical facts (serials, firmware), not on every field.</dd><dt>Portal fit</dt><dd>A "who set this and from where" panel on every field.</dd></dl></article>
+
+  <article class="card" id="c-temporal"><span class="pill v-adopt">Adopt</span><h4>Point-in-time reads (<code>?at=</code>) over append-only history</h4>
+   <p>An update closes the current edge and opens a new one. Any query takes <code>at</code> (<code>core/query/attribute.py:85-99</code>; <code>graphql/initialization.py:104,141</code>). REST rejects an <code>at</code> earlier than the branch (<code>branch/query_time_validator.py:17-36</code>).</p>
+   <dl><dt>Maps to</dt><dd>inventory, validation (RMA forensics)</dd><dt>Effort / risk</dt><dd>M on Postgres (valid-time ranges), S if you use Infrahub. Risk: rebase and rollback in Infrahub rewrite history, so it isn't strictly immutable.</dd></dl></article>
+
+  <article class="card" id="c-generated-api"><span class="pill v-adopt">Adopt</span><h4>One schema generates the API, typed clients and generic UI</h4>
+   <p>Every kind gets <code>Create/Update/Upsert/Delete</code> plus filtered queries (<code>graphql/manager.py:539-593</code>). The UI renders lists, details and forms by attribute kind (<code>frontend/app/src/shared/components/form/dynamic-form.tsx:70-92</code>).</p>
+   <dl><dt>Maps to</dt><dd>portal</dd><dt>Effort / risk</dt><dd>M. Risk: generic CRUD bypasses lifecycle rules. Expose state-changing fields only through actions.</dd><dt>Portal fit</dt><dd>Extend generation to the CLI and to MCP tool descriptors from the same schema.</dd></dl></article>
+
+  <article class="card" id="c-traversal"><span class="pill v-adopt">Adopt</span><h4>Schema-planned, permission-pruned path and reachability queries</h4>
+   <p><code>InfrahubPathTraversal</code>/<code>InfrahubReachableNodes</code> plan legal hops from the schema, prune by the caller's view permissions, and run a bidirectional BFS with a depth cap (default 5, max 30) and timeouts (<code>graph_traversal/planning/planner.py</code>; <code>graphql/queries/path.py:31</code>).</p>
+   <dl><dt>Maps to</dt><dd>inventory, validation</dd><dt>Effort / risk</dt><dd>M. Risk: query cost at 100k-node scale.</dd><dt>Portal fit</dt><dd>Blast-radius panel: "which GPUs lose power or fabric if PDU-7 or leaf-3 fails".</dd></dl></article>
+ </div>
+
+ <h3>Adapt</h3>
+ <div class="cards">
+  <article class="card" id="c-proposed"><span class="pill v-adapt">Adapt</span><h4>Branch + proposed change for capacity and fabric plans</h4>
+   <p>Plans live on a branch. The pipeline runs integrity checks and generators, and conflicts need an explicit side before merge (<code>proposed_change/tasks.py:1179-1314,244-344</code>).</p>
+   <p><b>Change:</b> use branches only for planning data (BOM, rack elevations, cabling plans), never for operational state. Re-run checks on every branch change: theirs only run on create or on request, so they go stale (<code>graphql/mutations/proposed_change.py:132-140,262-271</code>).</p>
+   <dl><dt>Maps to</dt><dd>inventory (capacity planning)</dd><dt>Effort / risk</dt><dd>L. Risk: merge cost and a global merge lock on large plans.</dd><dt>Temporal fit</dt><dd>Merge emits an event; a Temporal "apply plan" workflow turns it into provisioning work.</dd></dl></article>
+
+  <article class="card" id="c-statusguard"><span class="pill v-adapt">Adapt</span><h4>Status-gated action allowlist</h4>
+   <p>A middleware blocks every mutation on a NEED_REBASE branch except an allowlist (<code>graphql/middleware.py:9,32</code>). Merge refuses bad statuses (<code>graphql/mutations/branch.py:386-395</code>).</p>
+   <p><b>Change:</b> make it a declarative transition table (state × action → next state, guard) owned by the lifecycle workflow. The API rejects actions not allowed in the current state before starting a workflow.</p>
+   <dl><dt>Maps to</dt><dd>lifecycle</dd><dt>Effort / risk</dt><dd>M. Risk: the table and the workflow disagree. Generate one from the other.</dd><dt>Temporal fit</dt><dd>The entity workflow owns state and the API only signals it. The table is shared so the portal can grey out actions.</dd></dl></article>
+
+  <article class="card" id="c-triggers"><span class="pill v-adapt">Adapt</span><h4>Trigger rules as data (kind, branch, attribute from→to)</h4>
+   <p><code>CoreNodeTriggerRule</code> plus match nodes compile into Prefect automations. They can match <code>value_previous</code>, which makes them transition-aware (<code>actions/models.py:84-245</code>; <code>actions/schema.py:268-318</code>).</p>
+   <p><b>Change:</b> the action is "signal or start Temporal workflow X with this input". Deliver through a transactional outbox rather than post-response background tasks.</p>
+   <dl><dt>Maps to</dt><dd>orchestration</dd><dt>Effort / risk</dt><dd>M. Risk: trigger storms on bulk edits. Add rate limits per rule.</dd></dl></article>
+
+  <article class="card" id="c-extensions"><span class="pill v-adapt">Adapt</span><h4>Schema <code>extensions:</code> so other teams can add fields to core kinds</h4>
+   <p><code>extensions.nodes</code> may only add attributes and relationships to existing kinds (<code>core/schema/__init__.py:35-46,65-70</code>; merged at <code>schema_branch.py:717-720</code>). Example: <code>models/examples/extension_power.yml:183-191</code>.</p>
+   <p><b>Change:</b> their extensions skip the restricted-namespace check (<code>core/schema/__init__.py:103-110</code>). Require plugin-namespaced field names and an owning team, and route schema changes through review.</p>
+   <dl><dt>Maps to</dt><dd>portal, inventory</dd><dt>Effort / risk</dt><dd>M. Risk: plugins making core kinds heavier to read.</dd><dt>Portal fit</dt><dd>A plugin's contract is its schema extension plus actions plus panels.</dd></dl></article>
+
+  <article class="card" id="c-generators"><span class="pill v-adapt">Adapt</span><h4>Generators: desired-state records from a query</h4>
+   <p>A generator runs a GraphQL query and upserts derived objects, such as fabric links from a rack plan. It runs as a proposed-change check or on a trigger (<code>generators/tasks.py:37-110</code>; <code>proposed_change/tasks.py:900-962</code>).</p>
+   <p><b>Change:</b> run them as Temporal activities under the caller's identity (theirs drop it, <code>generators/models.py:18-33</code>), in a sandbox, with dry-run diffs.</p>
+   <dl><dt>Maps to</dt><dd>provisioning (plan expansion), orchestration</dd><dt>Effort / risk</dt><dd>M. Risk: generator loops. Add convergence detection.</dd></dl></article>
+
+  <article class="card" id="c-perms"><span class="pill v-adapt">Adapt</span><h4>Permissions with branch-relative decisions</h4>
+   <p>Account → group → role → global or object permission. The object decision is a bitflag for default vs other branches, checked per kind (<code>graphql/auth/query_permission_checker/object_permission_checker.py:24-67</code>).</p>
+   <p><b>Change:</b> keep "may edit planning branches but not main". Add instance-level and attribute scopes (site, tenant, owning team) through a ReBAC engine. Their model is kind-level only and has no tenancy.</p>
+   <dl><dt>Maps to</dt><dd>authz</dd><dt>Effort / risk</dt><dd>M. Risk: two permission systems drifting apart.</dd></dl></article>
+
+  <article class="card" id="c-menu"><span class="pill v-adapt">Adapt</span><h4>Menu as data with <code>required_permissions</code></h4>
+   <p><code>CoreMenu</code>/<code>CoreMenuItem</code> nodes, loaded from Git or <code>models/base_menu.yml</code>, drive the sidebar (<code>core/schema/definitions/core/menu.py:10-76</code>).</p>
+   <p><b>Change:</b> theirs can only link to built-in SPA routes (<code>sidebar-menu-section-object.tsx:37,56</code>). Ours must reference plugin-registered views.</p>
+   <dl><dt>Maps to</dt><dd>portal</dd><dt>Effort / risk</dt><dd>S. Risk: low.</dd><dt>Portal fit</dt><dd>Works with a Backstage or custom shell.</dd></dl></article>
+
+  <article class="card" id="c-mcpbranch"><span class="pill v-adapt">Adapt</span><h4>AI agents write to branches; humans merge</h4>
+   <p>The docs describe an external MCP server that writes on <code>mcp/session-*</code> branches, opens a proposed change and has no merge tool (<code>docs/docs/overview/build-with-ai/index.mdx:19,105-111</code>). <span class="inferred">Docs only; the server is not in this repo.</span></p>
+   <p><b>Change:</b> apply the pattern to plan edits only. For operational actions, use Temporal workflows with approval signals under the caller's identity.</p>
+   <dl><dt>Maps to</dt><dd>portal, authz</dd><dt>Effort / risk</dt><dd>S. Risk: branch sprawl.</dd></dl></article>
+
+  <article class="card" id="c-profiles"><span class="pill v-adapt">Adapt</span><h4>Profiles: live, prioritised defaults</h4>
+   <p>Profiles apply values by <code>profile_priority</code>, with <code>is_from_profile</code> provenance, and are refreshed when they change (<code>profiles/node_applier.py:96</code>; <code>profiles/tasks.py:33-86</code>).</p>
+   <p><b>Change:</b> use them for desired config (BIOS or firmware baseline per SKU) and compare against observed values to detect drift.</p>
+   <dl><dt>Maps to</dt><dd>provisioning, inventory</dd><dt>Effort / risk</dt><dd>M. Risk: implicit values surprise operators.</dd></dl></article>
+ </div>
+
+ <h3>Avoid</h3>
+ <div class="cards">
+  <article class="card" id="c-agentid"><span class="pill v-avoid">Avoid</span><h4>Workers act as a super-admin and swap in the caller for attribution</h4>
+   <p>Workers use the agent token (<code>docker-compose.yml:370</code>). The agent is in Super Administrators (<code>core/initialization.py:541,592-598</code>). Permissions are loaded for the agent before <code>OVERRIDE_CONTEXT</code> swaps the account (<code>graphql/initialization.py:127</code>; <code>graphql/context.py:31-44</code>).</p>
+   <p><b>Why avoid:</b> it breaks "every action under the caller's identity". Use token exchange or on-behalf-of credentials per workflow and check authz inside activities.</p>
+   <dl><dt>Maps to</dt><dd>authz, orchestration</dd><dt>Effort / risk</dt><dd>—</dd></dl></article>
+
+  <article class="card" id="c-repocode"><span class="pill v-avoid">Avoid</span><h4>Plugin code imported into shared workers</h4>
+   <p>Repository Python is added to <code>sys.path</code> and imported with <code>importlib</code>, both at sync time and at run time (<code>git/integrator.py:1094-1107,1986-1995,2061-2070</code>). The only guard is path containment (<code>git/base.py:1103-1119</code>). The worker holds a DB session.</p>
+   <p><b>Why avoid:</b> anyone who can push to a registered repo gets DB-level access. Run plugin workflows on each team's own Temporal task queue and workers.</p>
+   <dl><dt>Maps to</dt><dd>portal, orchestration</dd><dt>Effort / risk</dt><dd>—</dd></dl></article>
+
+  <article class="card" id="c-prefect"><span class="pill v-avoid">Avoid</span><h4>Fire-and-forget flow submission without idempotency or timeouts</h4>
+   <p><code>submit_workflow</code> calls <code>run_deployment(timeout=0)</code>. <code>execute_workflow</code> polls with no timeout. No <code>idempotency_key</code> is used anywhere (<code>services/adapters/workflow/worker.py:84-122</code>). The catalogue is a closed static list (<code>workflows/catalogue.py:687,778-786</code>).</p>
+   <p><b>Why avoid:</b> Temporal already gives workflow-ID dedupe, timeouts and durable retries. Don't copy this layer.</p>
+   <dl><dt>Maps to</dt><dd>orchestration</dd><dt>Effort / risk</dt><dd>—</dd></dl></article>
+
+  <article class="card" id="c-eventsbg"><span class="pill v-avoid">Avoid</span><h4>Events emitted as post-response background tasks</h4>
+   <p>Events are built after commit and sent by Starlette BackgroundTasks once the response is sent. They are skipped when there is no account session (<code>graphql/mutations/main.py:51-80,238</code>; <code>graphql/app.py:301</code>).</p>
+   <p><b>Why avoid:</b> events that drive workflows need a transactional outbox or CDC, or an in-workflow write followed by a signal.</p>
+   <dl><dt>Maps to</dt><dd>orchestration</dd><dt>Effort / risk</dt><dd>—</dd></dl></article>
+ </div>
+
+ <h3>Watch</h3>
+ <div class="cards">
+  <article class="card" id="c-mergerecovery"><span class="pill v-watch">Watch</span><h4>Multi-transaction merge with range rollback and failure detection</h4>
+   <p>A dead lock holder flips the branch to MERGE_FAILED. Recovery reverts every edge since <code>merge_started_at</code> (<code>core/merge/failure_identifier.py:50-102</code>; <code>core/merge/failure_recoverer.py:107-141</code>).</p>
+   <dl><dt>Maps to</dt><dd>orchestration, inventory</dd><dt>Effort / risk</dt><dd>L. Risk: depends on invariants listed in <code>merge-failure-recovery.md:100-117</code>. Useful only if we build branching ourselves.</dd></dl></article>
+
+  <article class="card" id="c-admission"><span class="pill v-watch">Watch</span><h4>Coordination-free admission control with client priority</h4>
+   <p>Per-worker CoDel plus a DB-stress signal, with <code>X-Priority</code> from clients. Responses are 429 with <code>Retry-After</code> (<code>api/admission/*</code>; ADR 0007–0009).</p>
+   <dl><dt>Maps to</dt><dd>portal, multi-site</dd><dt>Effort / risk</dt><dd>M. Risk: <code>X-Priority</code> is trusted from the client. Tie it to identity.</dd></dl></article>
+
+  <article class="card" id="c-diffgraph"><span class="pill v-watch">Watch</span><h4>Incremental diffs stored as a graph</h4>
+   <p>Diff slices are cached and only the gaps are recomputed. Conflicts are nodes with a <code>selected_branch</code> (<code>core/diff/coordinator.py:596-678</code>; <code>core/diff/query/save.py</code>).</p>
+   <dl><dt>Maps to</dt><dd>inventory</dd><dt>Effort / risk</dt><dd>L. Risk: the merge loads the full diff into memory for the changelog (<code>core/merge/orchestrator.py:112</code>).</dd></dl></article>
+ </div>
+</section>
+
+<section id="fit">
+ <h2>Fit matrix</h2>
+ <p class="lead">Coverage is strong for inventory and portal data, partial for orchestration and authz, and absent for provisioning, validation and multi-site.</p>
+ <div class="tbl"><table class="fit">
+  <thead><tr><th>Our area</th><th>Adopt</th><th>Adapt</th><th>Avoid</th><th>Not addressed</th></tr></thead>
+  <tbody>
+   <tr><td><b>inventory</b></td><td><a href="#c-schema">schema</a><a href="#c-branchsupport">branch support</a><a href="#c-pools">pools</a><a href="#c-templates">templates</a><a href="#c-provenance">provenance</a><a href="#c-temporal">time travel</a><a href="#c-traversal">traversal</a></td><td><a href="#c-proposed">plans on branches</a><a href="#c-extensions">extensions</a><a href="#c-profiles">profiles</a></td><td>—</td><td>discovery, reconciliation vs reality, cabling verification</td></tr>
+   <tr><td><b>lifecycle</b></td><td><a href="#c-branchsupport">agnostic state fields</a></td><td><a href="#c-statusguard">status allowlist</a><a href="#c-triggers">trigger rules</a></td><td>—</td><td>node state machine, transition guards</td></tr>
+   <tr><td><b>provisioning</b></td><td><a href="#c-pools">pools</a></td><td><a href="#c-generators">generators</a><a href="#c-profiles">profiles</a></td><td>—</td><td>Redfish/IPMI, PXE, images, firmware, drift</td></tr>
+   <tr><td><b>validation</b></td><td><a href="#c-temporal">time travel</a><a href="#c-traversal">blast radius</a></td><td><a href="#c-proposed">gated checks</a></td><td>—</td><td>burn-in, DCGM/Xid, health → drain/RMA</td></tr>
+   <tr><td><b>portal</b></td><td><a href="#c-generated-api">generated API/UI</a></td><td><a href="#c-extensions">extensions</a><a href="#c-menu">menu as data</a><a href="#c-mcpbranch">MCP on branches</a></td><td><a href="#c-repocode">in-process plugin code</a></td><td>runtime UI plugins, panels, actions</td></tr>
+   <tr><td><b>orchestration</b></td><td>—</td><td><a href="#c-triggers">trigger rules</a><a href="#c-generators">generators</a></td><td><a href="#c-prefect">Prefect layer</a><a href="#c-eventsbg">post-response events</a></td><td>durable workflows, bulk canaries</td></tr>
+   <tr><td><b>authz</b></td><td><a href="#c-provenance">actor on every edge</a></td><td><a href="#c-perms">branch-relative perms</a></td><td><a href="#c-agentid">super-admin workers</a></td><td>tenancy, instance-level ACLs</td></tr>
+   <tr><td><b>multi-site</b></td><td>—</td><td>—</td><td>—</td><td>site agents, disconnection, dial-home (<a href="#c-admission">admission</a> is on watch)</td></tr>
+  </tbody>
+ </table></div>
+</section>
+
+<section id="antipatterns">
+ <h2>Anti-patterns and limitations</h2>
+ <p class="lead">The highest-severity issues are all about identity and delivery guarantees, exactly where our requirements are strictest.</p>
+ <div>
+  <div class="ap"><div><span class="pill s-high">high</span></div><div><h4>Async work is authorised as super-admin</h4><p>Permissions are loaded for the agent; the caller is swapped in only for attribution, and the impersonation isn't recorded in events.</p><p class="ev"><code>graphql/initialization.py:127</code>, <code>graphql/context.py:31-44</code>, <code>core/initialization.py:592-598</code></p></div></div>
+  <div class="ap"><div><span class="pill s-high">high</span></div><div><h4>Unsandboxed user code on workers that hold DB access</h4><p>Repository Python is imported at sync and at run time. The only guard is path containment.</p><p class="ev"><code>git/integrator.py:1986-1995</code>, <code>git/base.py:1103-1119</code>, <code>workers/infrahub_async.py:159-165</code></p></div></div>
+  <div class="ap"><div><span class="pill s-high">high</span></div><div><h4>No resource lifecycle or transition guards</h4><p>Status is a free-form Dropdown. Trigger rules react after commit and cannot block a change.</p><p class="ev"><code>models/base/dcim.yml:32-48</code>, <code>actions/schema.py:268-318</code></p></div></div>
+  <div class="ap"><div><span class="pill s-high">high</span></div><div><h4>Events and workflow dispatch are not transactional</h4><p>A crash between commit and the background task loses the event. The proposed-change pipeline is submitted after commit.</p><p class="ev"><code>graphql/mutations/main.py:238</code>, <code>graphql/app.py:301</code>, <code>graphql/mutations/proposed_change.py:117,139</code></p></div></div>
+  <div class="ap"><div><span class="pill s-med">med</span></div><div><h4>GraphQL WebSocket subscriptions are not authenticated</h4><p>The WebSocket branch opens a DB session and serves without any token check.</p><p class="ev"><code>graphql/app.py:154-161</code></p></div></div>
+  <div class="ap"><div><span class="pill s-med">med</span></div><div><h4>REST transform endpoints bypass object permissions</h4><p>They need an authenticated user but run the stored query with no account session or permission checker.</p><p class="ev"><code>api/transformation.py:36-77</code></p></div></div>
+  <div class="ap"><div><span class="pill s-med">med</span></div><div><h4>Kind-level RBAC only; no tenancy</h4><p>There are no instance or row scopes, and a grep for "tenant" finds nothing.</p><p class="ev"><code>graphql/auth/query_permission_checker/object_permission_checker.py:24-67</code></p></div></div>
+  <div class="ap"><div><span class="pill s-med">med</span></div><div><h4>Merges are global, serialised and non-atomic</h4><p>One lock covers all merges and blocks writes to main. Correctness depends on range rollback. The git merge runs after MERGED and can diverge.</p><p class="ev"><code>core/merge/merge_locker.py:12</code>, <code>core/merge/write_blocker.py:11</code>, <code>core/diff/merger/merger.py:100-138</code>, <code>core/merge/post_merge.py:76-79</code></p></div></div>
+  <div class="ap"><div><span class="pill s-med">med</span></div><div><h4>Write amplification on update</h4><p>Each changed field is one Cypher query. Non-indexed large values are looked up without an index. Uniqueness locks have no branch component, so they serialise writers across branches.</p><p class="ev"><code>core/node/__init__.py:1161-1172</code>, <code>core/query/node.py:305-322</code>, <code>core/node/lock_utils.py:136-181</code>, FIXME at <code>graphql/mutations/main.py:298</code></p></div></div>
+  <div class="ap"><div><span class="pill s-med">med</span></div><div><h4>Schema extensions skip the restricted-namespace check</h4><p>Any schema loader can add fields to <code>Core*</code> and <code>Builtin*</code> kinds.</p><p class="ev"><code>core/schema/__init__.py:103-110</code>, <code>backend/tests/unit/api/test_schema_load_contract.py:46</code></p></div></div>
+  <div class="ap"><div><span class="pill s-med">med</span></div><div><h4><code>is_protected</code> is stored but not enforced</h4><p>The docs say it "prevents modification". The only enforcement found is for menus.</p><p class="ev"><code>dev/knowledge/backend/database-schema.md:157</code>, <code>graphql/mutations/menu.py:82</code></p></div></div>
+  <div class="ap"><div><span class="pill s-low">low</span></div><div><h4>Proposed-change checks go stale; weak state guard</h4><p>The pipeline is not re-run when the branch changes. The merge sets MERGING without a lock.</p><p class="ev"><code>graphql/mutations/proposed_change.py:132-140,479-485</code>, <code>proposed_change/constants.py:44-55</code></p></div></div>
+  <div class="ap"><div><span class="pill s-low">low</span></div><div><h4>Group trigger with a group action leaves <code>workflow</code> unbound</h4><p>Only <code>CoreGeneratorAction</code> is handled in the group-trigger branch, so a <code>CoreGroupAction</code> would raise.</p><p class="ev"><code>actions/models.py:217-243</code></p></div></div>
+  <div class="ap"><div><span class="pill s-low">low</span></div><div><h4>Stateless JWT ignores deactivated accounts</h4><p>Access tokens don't check the account's active status. API keys do.</p><p class="ev"><code>auth/auth.py:535-548</code> vs <code>:569-576</code></p></div></div>
+  <div class="ap"><div><span class="pill s-low">low</span></div><div><h4>Number min/max only enforced in strict mode</h4><p>This is a legacy-data workaround.</p><p class="ev"><code>core/attribute.py:309-311</code></p></div></div>
+  <div class="ap"><div><span class="pill s-low">low</span></div><div><h4>Trace context stops at Prefect boundaries; audit retention is short</h4><p>Traces aren't propagated into flows. Event retention depends on Prefect (<span class="inferred">~7 days per docs</span>) unless you have Enterprise log forwarding.</p><p class="ev"><code>services/adapters/message_bus/nats.py:87-114</code>, <code>log_forwarding/service.py</code></p></div></div>
+  <div class="ap"><div><span class="pill s-low">low</span></div><div><h4>Insecure defaults in compose</h4><p>The compose file ships default admin and agent tokens and a default <code>SECRET_KEY</code>. There is no <code>/health</code> route.</p><p class="ev"><code>docker-compose.yml:337-341,370</code></p></div></div>
+ </div>
+</section>
+
+<section id="docs-vs-code">
+ <h2>Docs vs code</h2>
+ <p class="lead">The internal docs are unusually good, but several merge and storage claims are stale. Trust the code.</p>
+ <div class="tbl"><table>
+  <thead><tr><th>Doc claim</th><th>Code reality</th></tr></thead>
+  <tbody>
+   <tr><td><code>merge-failure-recovery.md:5</code>: the merge is "a single database-level operation"</td><td>It runs as several transactions (<code>core/diff/merger/merger.py:100-138</code>).</td></tr>
+   <tr><td><code>branch-status.md:98</code>: MERGED is set after the repository merge</td><td>The repository merge runs after MERGED (<code>core/merge/post_merge.py:76-79</code>).</td></tr>
+   <tr><td><code>branch-status.md:14-15</code>: NEED_REBASE means "behind main"; NEED_UPGRADE_REBASE only blocks delete</td><td>NEED_REBASE is set only by object conversion. The middleware does not check NEED_UPGRADE_REBASE.</td></tr>
+   <tr><td><code>database-schema.md:96</code>: every AttributeValue is deduplicated with MERGE</td><td>Only indexed and IP values. Others use OPTIONAL MATCH then CREATE (<code>core/query/node.py:305-322</code>).</td></tr>
+   <tr><td><code>database-schema.md:168</code>: time filter <code>from &lt; t AND to &gt;= t</code></td><td>The code uses <code>from &lt;= t AND to &gt; t</code> (<code>core/branch/models.py:426-431</code>).</td></tr>
+   <tr><td><code>database-schema.md:157</code>: IS_PROTECTED prevents modification</td><td>No enforcement found.</td></tr>
+   <tr><td>ADR 0002, <code>events.md</code>: dual-channel dispatch</td><td>There are three channels, including log forwarding. Events are sent after the response (<code>services/adapters/event/__init__.py:30-54</code>).</td></tr>
+   <tr><td><code>api-backpressure.md</code>: <code>/health</code> is excluded from admission</td><td>No <code>/health</code> route exists.</td></tr>
+   <tr><td><code>config.py:1199-1201</code>: Jinja2 filter restriction applies "for computed attributes"</td><td>It also governs repository Jinja2 transforms (<code>git/integrator.py:1952</code>).</td></tr>
+   <tr><td><code>async-tasks.md</code>, <code>authentication.md</code></td><td>Neither mentions the super-admin worker identity, the <code>OVERRIDE_CONTEXT</code> path, or that JWT validation is stateless.</td></tr>
+  </tbody>
+ </table></div>
+</section>
+
+<section id="questions">
+ <h2>Open questions and spike ideas</h2>
+ <p class="lead">Run the scale spike first. If the attribute-as-vertex model can't serve a fleet-sized graph, the other questions don't matter.</p>
+ <ol>
+  <li><b>Scale spike.</b> Load a synthetic fleet: 20 sites, 2k racks, 40k nodes × (8 GPUs + 10 NIC ports + PSUs), about 30 attributes each, which is roughly 20–40M vertices. Measure filtered list latency, a 500-node bulk status update, a traversal blast-radius query, and a planning-branch merge of 5k changes.</li>
+  <li><b>Lifecycle on top.</b> Can a branch-agnostic <code>lifecycle_state</code> attribute, writable only by a Temporal service account through a custom mutation, give us guarded transitions without forking? Ask the maintainers whether custom mutations and actions are on the roadmap.</li>
+  <li><b>Identity.</b> Would the maintainers accept per-caller tokens for workers (token exchange) instead of <code>OVERRIDE_CONTEXT</code>? Is the Enterprise edition any different?</li>
+  <li><b>Enterprise boundary.</b> Which of approvals enforcement, log forwarding, extra workflows (dependency injection) and HA are Enterprise-only (<code>proposed_change/approval_revoker.py:21-27</code>, <code>log_forwarding/service.py</code>)?</li>
+  <li><b>Neo4j HA.</b> Compose uses Community edition. What is the supported HA or clustering story, and is Memgraph (<code>development/docker-compose-database-memgraph.yml</code>) production-grade?</li>
+  <li><b>Pool race.</b> Write a concurrency test for nested template allocations across concurrent mutations (see <a href="#flows">F1</a> risk).</li>
+  <li><b>Event loss.</b> Is there any replay or reconciliation for events lost between commit and background send? If we bridged to Temporal through <code>CustomWebhook</code>, what delivery guarantees would we get (ADR 0013/0015)?</li>
+  <li><b>Upgrade downtime.</b> How long do the graph migrations (79 so far) take on a large graph, and do they need a write freeze?</li>
+  <li><b>Build vs embed.</b> Should Infrahub be our inventory store, with our portal and Temporal on top through GraphQL, or should we re-implement its data patterns on Postgres? Decide after spike 1.</li>
+ </ol>
+</section>
+
+<section id="appendix" class="repo">
+ <h2>Appendix</h2>
+ <h3>Repo map</h3>
+ <dl>
+  <dt>backend/infrahub/</dt><dd>Server, core graph layer, schema, diff/merge, GraphQL, workflows, git, auth.</dd>
+  <dt>frontend/app/</dt><dd>React 19 SPA: schema-driven object pages plus custom pages for core kinds.</dd>
+  <dt>python_sdk/</dt><dd>Submodule (not checked out): SDK, <code>infrahubctl</code>, repository config models.</dd>
+  <dt>models/</dt><dd>Example schemas (<code>base/</code> DCIM, IPAM, location) and integration mappings.</dd>
+  <dt>schema/</dt><dd>Generated GraphQL SDL and OpenAPI.</dd>
+  <dt>dev/</dt><dd>Internal knowledge base, ADRs 0001–0015, guidelines and specs.</dd>
+  <dt>docs/</dt><dd>Public Docusaurus docs.</dd>
+  <dt>development/</dt><dd>Compose variants (Memgraph, NATS, observability), Dockerfile, k8s values, Terraform.</dd>
+  <dt>tasks/</dt><dd>Invoke tasks for build, test and generation.</dd>
+  <dt>tests/, backend/tests/</dt><dd>Unit, component, integration and e2e (testcontainers).</dd>
+  <dt>changelog/</dt><dd>Towncrier fragments.</dd>
+  <dt>python_testcontainers/, utilities/</dt><dd>Test infrastructure and helpers.</dd>
+ </dl>
+ <h3>Files most worth reading</h3>
+ <ol>
+  <li><code>dev/knowledge/backend/database-schema.md</code> and <code>query-pattern.md</code>: the storage model. Read them with the corrections above.</li>
+  <li><code>backend/infrahub/core/branch/models.py</code>: branch model and the edge filter (<code>:387-436</code>).</li>
+  <li><code>backend/infrahub/core/query/node.py</code> and <code>core/query/attribute.py</code>: the actual Cypher.</li>
+  <li><code>backend/infrahub/core/schema/schema_branch.py</code>: schema processing, template and profile generation.</li>
+  <li><code>backend/infrahub/core/node/create.py</code>: template expansion and pool allocation.</li>
+  <li><code>backend/infrahub/core/node/resource_manager/ip_prefix_pool.py</code>: idempotent allocation.</li>
+  <li><code>backend/infrahub/core/merge/orchestrator.py</code> and <code>dev/knowledge/backend/merge-failure-recovery.md</code>.</li>
+  <li><code>backend/infrahub/proposed_change/tasks.py</code>: pipeline and merge gate.</li>
+  <li><code>backend/infrahub/actions/models.py</code> and <code>actions/schema.py</code>: trigger rules compiled into automations.</li>
+  <li><code>backend/infrahub/graphql/mutations/main.py</code> and <code>graphql/context.py</code>: the write path and identity override.</li>
+  <li><code>backend/infrahub/git/integrator.py</code>: how extensions are imported and executed.</li>
+  <li><code>models/examples/extension_rack.yml</code> and <code>extension_power.yml</code>: closest to our domain.</li>
+ </ol>
+</section>
+</main>
+</div>
+<footer><div class="wrap">Generated from a read of <code>c49e5a4</code> on 2026-09-30. Paths without a prefix are relative to <code>backend/infrahub/</code>. Citations were spot-checked against the code; items marked <span class="inferred">inferred</span> were not confirmed in code.</div></footer>
+<script>
+(function(){
+  var root=document.documentElement, btn=document.getElementById('themebtn');
+  try{var s=localStorage.getItem('ir-theme'); if(s){root.setAttribute('data-theme',s);}}catch(e){}
+  btn.addEventListener('click',function(){
+    var cur=root.getAttribute('data-theme');
+    if(!cur){cur=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}
+    var next=cur==='dark'?'light':'dark';
+    root.setAttribute('data-theme',next);
+    try{localStorage.setItem('ir-theme',next);}catch(e){}
+  });
+})();
+</script>
+</body>
+</html>

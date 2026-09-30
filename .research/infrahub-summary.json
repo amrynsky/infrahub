@@ -1,0 +1,32 @@
+{
+  "repo": "infrahub (opsmill/infrahub fork: amrynsky/infrahub)",
+  "sha": "c49e5a4",
+  "date": "2026-09-29",
+  "verdict": "Adopt its schema-driven, branch-versioned graph model for inventory and capacity planning; do not adopt its runtime (no lifecycle state machine, no hardware/health layer, super-admin workers, Prefect fire-and-forget).",
+  "patterns": [
+    {"pattern": "Declarative YAML schema with generics and Parent/Component/Generic relationship kinds", "area": "inventory", "verdict": "adopt", "effort": "M", "evidence": "backend/infrahub/core/schema/schema_branch.py:1168-1207; core/constants/__init__.py:318-356"},
+    {"pattern": "Per-attribute branch support (aware/agnostic/local)", "area": "inventory", "verdict": "adopt", "effort": "S", "evidence": "backend/infrahub/core/constants/__init__.py:174-177; core/diff/query/bulk_merge.py:68"},
+    {"pattern": "Identifier-keyed idempotent pool allocation", "area": "provisioning", "verdict": "adopt", "effort": "S", "evidence": "backend/infrahub/core/node/resource_manager/ip_prefix_pool.py:45-103; core/query/resource_manager.py:159-171"},
+    {"pattern": "Object templates expanding a component tree (BOM)", "area": "inventory", "verdict": "adopt", "effort": "M", "evidence": "backend/infrahub/core/node/create.py:97-141,233-283"},
+    {"pattern": "Per-field provenance (source/owner) and actor stamps on every edge", "area": "inventory", "verdict": "adopt", "effort": "M", "evidence": "backend/infrahub/core/query/node.py:258-268,333-338"},
+    {"pattern": "Point-in-time reads over append-only temporal edges", "area": "inventory", "verdict": "adopt", "effort": "M", "evidence": "backend/infrahub/core/query/attribute.py:85-99; core/branch/models.py:387-436"},
+    {"pattern": "One schema generates API, typed clients and generic UI", "area": "portal", "verdict": "adopt", "effort": "M", "evidence": "backend/infrahub/graphql/manager.py:539-593; frontend/app/src/shared/components/form/dynamic-form.tsx:70-92"},
+    {"pattern": "Schema-planned, permission-pruned path/reachability queries (blast radius)", "area": "inventory", "verdict": "adopt", "effort": "M", "evidence": "backend/infrahub/graph_traversal/planning/planner.py; graphql/queries/path.py:31"},
+    {"pattern": "Branch + proposed change with gated checks for capacity/fabric plans", "area": "inventory", "verdict": "adapt", "effort": "L", "evidence": "backend/infrahub/proposed_change/tasks.py:1179-1314,244-344"},
+    {"pattern": "Status-gated action allowlist -> declarative transition table", "area": "lifecycle", "verdict": "adapt", "effort": "M", "evidence": "backend/infrahub/graphql/middleware.py:9,32"},
+    {"pattern": "Trigger rules as data (kind, branch, attribute from->to)", "area": "orchestration", "verdict": "adapt", "effort": "M", "evidence": "backend/infrahub/actions/models.py:84-245; actions/schema.py:268-318"},
+    {"pattern": "Schema extensions letting teams add fields to core kinds", "area": "portal", "verdict": "adapt", "effort": "M", "evidence": "backend/infrahub/core/schema/__init__.py:35-46,103-110"},
+    {"pattern": "Generators as desired-state record reconcilers", "area": "orchestration", "verdict": "adapt", "effort": "M", "evidence": "backend/infrahub/generators/tasks.py:37-110"},
+    {"pattern": "Branch-relative object permissions", "area": "authz", "verdict": "adapt", "effort": "M", "evidence": "backend/infrahub/graphql/auth/query_permission_checker/object_permission_checker.py:24-67"},
+    {"pattern": "Menu as data with required_permissions", "area": "portal", "verdict": "adapt", "effort": "S", "evidence": "backend/infrahub/core/schema/definitions/core/menu.py:10-76"},
+    {"pattern": "AI agents write on branches, humans merge (external MCP, docs only)", "area": "portal", "verdict": "adapt", "effort": "S", "evidence": "docs/docs/overview/build-with-ai/index.mdx:19,105-111"},
+    {"pattern": "Profiles as live prioritised defaults", "area": "provisioning", "verdict": "adapt", "effort": "M", "evidence": "backend/infrahub/profiles/node_applier.py:96; profiles/tasks.py:33-86"},
+    {"pattern": "Workers authorised as super-admin with caller swapped in for attribution", "area": "authz", "verdict": "avoid", "effort": "-", "evidence": "backend/infrahub/graphql/initialization.py:127; graphql/context.py:31-44; core/initialization.py:592-598"},
+    {"pattern": "Plugin Python imported in-process on shared workers", "area": "portal", "verdict": "avoid", "effort": "-", "evidence": "backend/infrahub/git/integrator.py:1986-1995; git/base.py:1103-1119"},
+    {"pattern": "Fire-and-forget flow submission without idempotency or timeouts", "area": "orchestration", "verdict": "avoid", "effort": "-", "evidence": "backend/infrahub/services/adapters/workflow/worker.py:84-122"},
+    {"pattern": "Events sent as post-response background tasks (no outbox)", "area": "orchestration", "verdict": "avoid", "effort": "-", "evidence": "backend/infrahub/graphql/mutations/main.py:238; graphql/app.py:301"},
+    {"pattern": "Multi-transaction merge with range rollback and failure detection", "area": "orchestration", "verdict": "watch", "effort": "L", "evidence": "backend/infrahub/core/merge/failure_identifier.py:50-102; core/merge/failure_recoverer.py:107-141"},
+    {"pattern": "Coordination-free admission control with client priority", "area": "portal", "verdict": "watch", "effort": "M", "evidence": "backend/infrahub/api/admission/; dev/adr/0007-0009"},
+    {"pattern": "Incremental diffs stored as a graph", "area": "inventory", "verdict": "watch", "effort": "L", "evidence": "backend/infrahub/core/diff/coordinator.py:596-678"}
+  ]
+}
