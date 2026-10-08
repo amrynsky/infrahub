@@ -1,0 +1,75 @@
+<svg viewBox="0 0 1100 374" width="1100" height="374" role="img" xmlns="http://www.w3.org/2000/svg"><style>/* svg tokens */
+.box{fill:#ffffff; stroke:#d3dce3; stroke-width:1.2}
+.box-sunk{fill:#eaf0f4}
+.box-acc{fill:#dcf0f0; stroke:#0d7a7e; stroke-width:1.4}
+.box-seam{fill:#fbefd9; stroke:#a86b12; stroke-width:1.3; stroke-dasharray:5 3}
+.box-dash{fill:#ffffff; stroke:#566775; stroke-width:1.2; stroke-dasharray:5 4}
+.box-term{fill:#ffffff; stroke:#14212b; stroke-width:2.2}
+.panel{fill:none; stroke:#d3dce3; stroke-width:1; stroke-dasharray:2 3}
+.ln{stroke:#566775; stroke-width:1.3; fill:none}
+.ln-acc{stroke:#0d7a7e; stroke-width:1.8; fill:none}
+.ln-seam{stroke:#a86b12; stroke-width:1.7; stroke-dasharray:7 4; fill:none}
+.ln-dash{stroke-dasharray:4 4}
+.ln-bus{stroke:#566775; stroke-width:3.5; fill:none; opacity:.55}
+.ln-life{stroke:#d3dce3; stroke-width:1.2; stroke-dasharray:3 4}
+.ah-acc{fill:#0d7a7e} .ah-mut{fill:#566775} .ah-seam{fill:#a86b12}
+.t-title{font:600 13px "IBM Plex Sans",Helvetica,Arial,sans-serif; fill:#14212b}
+.t-sub{font:11px "IBM Plex Mono",Menlo,Consolas,monospace; fill:#566775}
+.t-mono{font:11.5px "IBM Plex Mono",Menlo,Consolas,monospace; fill:#14212b}
+.t-lbl{font:11.5px "IBM Plex Sans",Helvetica,Arial,sans-serif; fill:#14212b}
+.t-edge{font:11px "IBM Plex Mono",Menlo,Consolas,monospace; fill:#566775}
+.t-head{font:600 12px "IBM Plex Mono",Menlo,Consolas,monospace; fill:#0d7a7e; letter-spacing:.04em}
+.t-tag{font:600 11px "IBM Plex Mono",Menlo,Consolas,monospace; fill:#0d7a7e}
+.tag-bg{fill:#ffffff; stroke:#0d7a7e; stroke-width:1.2}
+.lbl-bg{fill:#ffffff}
+</style><defs>
+<marker id="ah-acc" markerHeight="7" markerWidth="7" orient="auto-start-reverse" refX="10" refY="5" viewBox="0 0 10 10"><path fill="#0d7a7e" d="M0,0 L10,5 L0,10 z"></path></marker>
+<marker id="ah-mut" markerHeight="7" markerWidth="7" orient="auto-start-reverse" refX="10" refY="5" viewBox="0 0 10 10"><path fill="#566775" d="M0,0 L10,5 L0,10 z"></path></marker>
+<marker id="ah-seam" markerHeight="7" markerWidth="7" orient="auto-start-reverse" refX="10" refY="5" viewBox="0 0 10 10"><path fill="#a86b12" d="M0,0 L10,5 L0,10 z"></path></marker>
+</defs><rect x="0" y="0" width="1100" height="374" fill="#ffffff"/>
+<rect class="box box-sunk" height="46" rx="7" width="162" x="24" y="8"></rect>
+<text class="t-title" text-anchor="middle" x="105.0" y="28">Mutation</text>
+<text class="t-sub" text-anchor="middle" x="105.0" y="45">any write</text>
+<line class="ln-life" x1="105.0" x2="105.0" y1="54" y2="366"></line>
+<rect class="box box-sunk" height="46" rx="7" width="162" x="202" y="8"></rect>
+<text class="t-title" text-anchor="middle" x="283.0" y="28">Prefect events</text>
+<text class="t-sub" text-anchor="middle" x="283.0" y="45">automations</text>
+<line class="ln-life" x1="283.0" x2="283.0" y1="54" y2="366"></line>
+<rect class="box box-sunk" height="46" rx="7" width="162" x="380" y="8"></rect>
+<text class="t-title" text-anchor="middle" x="461.0" y="28">action flow</text>
+<text class="t-sub" text-anchor="middle" x="461.0" y="45">actions/tasks.py</text>
+<line class="ln-life" x1="461.0" x2="461.0" y1="54" y2="366"></line>
+<rect class="box box-sunk" height="46" rx="7" width="162" x="558" y="8"></rect>
+<text class="t-title" text-anchor="middle" x="639.0" y="28">generator-run</text>
+<text class="t-sub" text-anchor="middle" x="639.0" y="45">generators/tasks.py</text>
+<line class="ln-life" x1="639.0" x2="639.0" y1="54" y2="366"></line>
+<rect class="box box-sunk" height="46" rx="7" width="162" x="736" y="8"></rect>
+<text class="t-title" text-anchor="middle" x="817.0" y="28">User generator</text>
+<text class="t-sub" text-anchor="middle" x="817.0" y="45">git repo code</text>
+<line class="ln-life" x1="817.0" x2="817.0" y1="54" y2="366"></line>
+<rect class="box box-sunk" height="46" rx="7" width="162" x="914" y="8"></rect>
+<text class="t-title" text-anchor="middle" x="995.0" y="28">GraphQL API</text>
+<text class="t-sub" text-anchor="middle" x="995.0" y="45">agent token</text>
+<line class="ln-life" x1="995.0" x2="995.0" y1="54" y2="366"></line>
+<line class="ln-acc" marker-end="url(#ah-acc)" x1="105.0" x2="283.0" y1="96" y2="96"></line>
+<rect class="lbl-bg" height="15" rx="3" width="163.60000000000002" x="112.19999999999999" y="80"></rect>
+<text class="t-lbl" text-anchor="middle" x="194.0" y="91">1. infrahub.node.updated</text>
+<path class="ln-acc" d="M283.0,122 h26 v14 h-24" marker-end="url(#ah-acc)"></path>
+<rect class="lbl-bg" height="17" rx="3" width="144.4" x="313.0" y="122"></rect>
+<text class="t-lbl" x="317.0" y="135">2. match trigger rule</text>
+<line class="ln-acc" marker-end="url(#ah-acc)" x1="283.0" x2="461.0" y1="176" y2="176"></line>
+<rect class="lbl-bg" height="15" rx="3" width="163.60000000000002" x="290.2" y="160"></rect>
+<text class="t-lbl" text-anchor="middle" x="372.0" y="171">3. ExecuteWorkflow + ctx</text>
+<line class="ln-acc" marker-end="url(#ah-acc)" x1="461.0" x2="639.0" y1="216" y2="216"></line>
+<rect class="lbl-bg" height="15" rx="3" width="163.60000000000002" x="468.2" y="200"></rect>
+<text class="t-lbl" text-anchor="middle" x="550.0" y="211">4. REQUEST_GENERATOR_RUN</text>
+<line class="ln-acc" marker-end="url(#ah-acc)" x1="639.0" x2="817.0" y1="256" y2="256"></line>
+<rect class="lbl-bg" height="15" rx="3" width="150.8" x="652.6" y="240"></rect>
+<text class="t-lbl" text-anchor="middle" x="728.0" y="251">5. load_class(); run()</text>
+<line class="ln-seam" marker-end="url(#ah-seam)" x1="817.0" x2="995.0" y1="296" y2="296"></line>
+<rect class="lbl-bg" height="15" rx="3" width="163.60000000000002" x="824.2" y="280"></rect>
+<text class="t-lbl" text-anchor="middle" x="906.0" y="291">6. read + upsert via SDK</text>
+<line class="ln ln-dash" marker-end="url(#ah-mut)" x1="995.0" x2="817.0" y1="336" y2="336"></line>
+<rect class="lbl-bg" height="15" rx="3" width="125.2" x="843.4" y="320"></rect>
+<text class="t-lbl" text-anchor="middle" x="906.0" y="331">7. writes as agent</text>
+</svg>

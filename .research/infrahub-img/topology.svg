@@ -1,0 +1,117 @@
+<svg viewBox="0 0 1100 600" width="1100" height="600" role="img" xmlns="http://www.w3.org/2000/svg"><style>/* svg tokens */
+.box{fill:#ffffff; stroke:#d3dce3; stroke-width:1.2}
+.box-sunk{fill:#eaf0f4}
+.box-acc{fill:#dcf0f0; stroke:#0d7a7e; stroke-width:1.4}
+.box-seam{fill:#fbefd9; stroke:#a86b12; stroke-width:1.3; stroke-dasharray:5 3}
+.box-dash{fill:#ffffff; stroke:#566775; stroke-width:1.2; stroke-dasharray:5 4}
+.box-term{fill:#ffffff; stroke:#14212b; stroke-width:2.2}
+.panel{fill:none; stroke:#d3dce3; stroke-width:1; stroke-dasharray:2 3}
+.ln{stroke:#566775; stroke-width:1.3; fill:none}
+.ln-acc{stroke:#0d7a7e; stroke-width:1.8; fill:none}
+.ln-seam{stroke:#a86b12; stroke-width:1.7; stroke-dasharray:7 4; fill:none}
+.ln-dash{stroke-dasharray:4 4}
+.ln-bus{stroke:#566775; stroke-width:3.5; fill:none; opacity:.55}
+.ln-life{stroke:#d3dce3; stroke-width:1.2; stroke-dasharray:3 4}
+.ah-acc{fill:#0d7a7e} .ah-mut{fill:#566775} .ah-seam{fill:#a86b12}
+.t-title{font:600 13px "IBM Plex Sans",Helvetica,Arial,sans-serif; fill:#14212b}
+.t-sub{font:11px "IBM Plex Mono",Menlo,Consolas,monospace; fill:#566775}
+.t-mono{font:11.5px "IBM Plex Mono",Menlo,Consolas,monospace; fill:#14212b}
+.t-lbl{font:11.5px "IBM Plex Sans",Helvetica,Arial,sans-serif; fill:#14212b}
+.t-edge{font:11px "IBM Plex Mono",Menlo,Consolas,monospace; fill:#566775}
+.t-head{font:600 12px "IBM Plex Mono",Menlo,Consolas,monospace; fill:#0d7a7e; letter-spacing:.04em}
+.t-tag{font:600 11px "IBM Plex Mono",Menlo,Consolas,monospace; fill:#0d7a7e}
+.tag-bg{fill:#ffffff; stroke:#0d7a7e; stroke-width:1.2}
+.lbl-bg{fill:#ffffff}
+</style><defs>
+<marker id="ah-acc" markerHeight="7" markerWidth="7" orient="auto-start-reverse" refX="10" refY="5" viewBox="0 0 10 10"><path fill="#0d7a7e" d="M0,0 L10,5 L0,10 z"></path></marker>
+<marker id="ah-mut" markerHeight="7" markerWidth="7" orient="auto-start-reverse" refX="10" refY="5" viewBox="0 0 10 10"><path fill="#566775" d="M0,0 L10,5 L0,10 z"></path></marker>
+<marker id="ah-seam" markerHeight="7" markerWidth="7" orient="auto-start-reverse" refX="10" refY="5" viewBox="0 0 10 10"><path fill="#a86b12" d="M0,0 L10,5 L0,10 z"></path></marker>
+</defs><rect x="0" y="0" width="1100" height="600" fill="#ffffff"/>
+ clients 
+<rect class="box" height="56" rx="8" width="180" x="20" y="20"></rect>
+<text class="t-title" text-anchor="middle" x="110" y="44">Web UI</text>
+<text class="t-sub" text-anchor="middle" x="110" y="62">React SPA, schema-driven</text>
+<rect class="box" height="56" rx="8" width="180" x="220" y="20"></rect>
+<text class="t-title" text-anchor="middle" x="310" y="44">infrahubctl · SDK</text>
+<text class="t-sub" text-anchor="middle" x="310" y="62">same GraphQL / REST</text>
+<rect class="box-dash" height="56" rx="8" width="200" x="420" y="20"></rect>
+<text class="t-title" text-anchor="middle" x="520" y="44">External MCP server</text>
+<text class="t-sub" text-anchor="middle" x="520" y="62">docs only · inferred</text>
+<rect class="box" height="56" rx="8" width="180" x="660" y="20"></rect>
+<text class="t-title" text-anchor="middle" x="750" y="44">Identity provider</text>
+<text class="t-sub" text-anchor="middle" x="750" y="62">LDAP · OIDC · OAuth2</text>
+ server 
+<rect class="box-acc" height="110" rx="9" width="380" x="120" y="130"></rect>
+<text class="t-title" x="136" y="152">infrahub-server (FastAPI, gunicorn ×4)</text>
+<text class="t-sub" x="136" y="173">/graphql/{branch} · per-branch schema</text>
+<text class="t-sub" x="136" y="190">/api/* REST · schema load · diff</text>
+<text class="t-sub" x="136" y="207">admission (CoDel) · JWT / API key</text>
+<text class="t-sub" x="136" y="224">mutation → Node.save → Cypher</text>
+ prefect 
+<rect class="box" height="110" rx="9" width="260" x="620" y="130"></rect>
+<text class="t-title" x="636" y="152">task-manager (Prefect server)</text>
+<text class="t-sub" x="636" y="173">86 WorkflowDefinitions</text>
+<text class="t-sub" x="636" y="190">events + automations</text>
+<text class="t-sub" x="636" y="207">(= trigger rules, webhooks)</text>
+<text class="t-sub" x="636" y="224">run state · task logs</text>
+ git 
+<rect class="box" height="56" rx="8" width="160" x="920" y="130"></rect>
+<text class="t-title" text-anchor="middle" x="1000" y="154">Git remotes</text>
+<text class="t-sub" text-anchor="middle" x="1000" y="172">schemas · generators</text>
+ worker 
+<rect class="box" height="80" rx="9" width="260" x="620" y="300"></rect>
+<text class="t-title" x="636" y="322">task-worker ×N (Prefect)</text>
+<text class="t-sub" x="636" y="343">generators · transforms · checks</text>
+<text class="t-sub" x="636" y="360">merge · diff · git sync</text>
+ webhook targets 
+<rect class="box" height="56" rx="8" width="160" x="920" y="310"></rect>
+<text class="t-title" text-anchor="middle" x="1000" y="334">Webhook targets</text>
+<text class="t-sub" text-anchor="middle" x="1000" y="352">HMAC-signed POST</text>
+ bus + stores 
+<line class="ln-bus" x1="110" x2="910" y1="430" y2="430"></line>
+<text class="t-edge" x="324" y="420">shared state: server and workers connect directly</text>
+<line class="ln" x1="120" x2="120" y1="430" y2="460"></line>
+<line class="ln" x1="330" x2="330" y1="430" y2="460"></line>
+<line class="ln" x1="520" x2="520" y1="430" y2="460"></line>
+<line class="ln" x1="710" x2="710" y1="430" y2="460"></line>
+<line class="ln" x1="900" x2="900" y1="430" y2="460"></line>
+<rect class="box-acc" height="64" rx="8" width="200" x="20" y="460"></rect>
+<text class="t-title" text-anchor="middle" x="120" y="484">Neo4j (source of truth)</text>
+<text class="t-sub" text-anchor="middle" x="120" y="502">data + schema + diffs</text>
+<text class="t-sub" text-anchor="middle" x="120" y="516">temporal, branched edges</text>
+<rect class="box" height="64" rx="8" width="160" x="250" y="460"></rect>
+<text class="t-title" text-anchor="middle" x="330" y="486">Redis / NATS KV</text>
+<text class="t-sub" text-anchor="middle" x="330" y="506">locks · cache</text>
+<rect class="box" height="64" rx="8" width="160" x="440" y="460"></rect>
+<text class="t-title" text-anchor="middle" x="520" y="486">RabbitMQ / NATS</text>
+<text class="t-sub" text-anchor="middle" x="520" y="506">broadcast · RPC only</text>
+<rect class="box" height="64" rx="8" width="160" x="630" y="460"></rect>
+<text class="t-title" text-anchor="middle" x="710" y="486">Postgres</text>
+<text class="t-sub" text-anchor="middle" x="710" y="506">Prefect runs + events</text>
+<rect class="box" height="64" rx="8" width="160" x="820" y="460"></rect>
+<text class="t-title" text-anchor="middle" x="900" y="486">Object storage</text>
+<text class="t-sub" text-anchor="middle" x="900" y="506">artifacts · local / S3</text>
+ edges 
+<line class="ln-acc" marker-end="url(#ah-acc)" x1="110" x2="196" y1="76" y2="128"></line>
+<line class="ln-acc" marker-end="url(#ah-acc)" x1="310" x2="310" y1="76" y2="128"></line>
+<line class="ln-acc ln-dash" marker-end="url(#ah-acc)" x1="500" x2="446" y1="76" y2="128"></line>
+<line class="ln" marker-end="url(#ah-mut)" x1="500" x2="698" y1="140" y2="78"></line>
+<text class="t-edge" x="612" y="96">SSO</text>
+<line class="ln" marker-end="url(#ah-mut)" x1="500" x2="618" y1="200" y2="200"></line>
+<text class="t-edge" text-anchor="middle" x="560" y="192">flows · events</text>
+<line class="ln ln-dash" marker-end="url(#ah-mut)" x1="750" x2="750" y1="300" y2="242"></line>
+<text class="t-edge" x="758" y="276">poll work queues</text>
+<polyline class="ln-seam" marker-end="url(#ah-seam)" points="620,340 420,340 420,242"></polyline>
+<text class="t-edge" x="436" y="332">SDK as agent (super-admin)</text>
+<line class="ln" marker-end="url(#ah-mut)" x1="880" x2="998" y1="316" y2="188"></line>
+<text class="t-edge" x="962" y="258">clone · fetch</text>
+<line class="ln" marker-end="url(#ah-mut)" x1="880" x2="918" y1="338" y2="338"></line>
+<line class="ln-acc" x1="310" x2="310" y1="240" y2="430"></line>
+<line class="ln-acc" x1="750" x2="750" y1="380" y2="430"></line>
+ legend 
+<line class="ln-acc" x1="20" x2="60" y1="566" y2="566"></line><text class="t-edge" x="68" y="570">request / data path</text>
+<line class="ln" x1="220" x2="260" y1="566" y2="566"></line><text class="t-edge" x="268" y="570">internal call</text>
+<line class="ln-seam" x1="380" x2="420" y1="566" y2="566"></line><text class="t-edge" x="428" y="570">risk: identity boundary</text>
+<rect class="box-dash" height="18" rx="4" width="34" x="600" y="557"></rect><text class="t-edge" x="642" y="570">not in this repo (docs only)</text>
+<rect class="box-acc" height="18" rx="4" width="34" x="840" y="557"></rect><text class="t-edge" x="882" y="570">authoritative state</text>
+</svg>

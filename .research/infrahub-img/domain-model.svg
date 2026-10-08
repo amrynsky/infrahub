@@ -1,0 +1,121 @@
+<svg viewBox="0 0 1100 520" width="1100" height="520" role="img" xmlns="http://www.w3.org/2000/svg"><style>/* svg tokens */
+.box{fill:#ffffff; stroke:#d3dce3; stroke-width:1.2}
+.box-sunk{fill:#eaf0f4}
+.box-acc{fill:#dcf0f0; stroke:#0d7a7e; stroke-width:1.4}
+.box-seam{fill:#fbefd9; stroke:#a86b12; stroke-width:1.3; stroke-dasharray:5 3}
+.box-dash{fill:#ffffff; stroke:#566775; stroke-width:1.2; stroke-dasharray:5 4}
+.box-term{fill:#ffffff; stroke:#14212b; stroke-width:2.2}
+.panel{fill:none; stroke:#d3dce3; stroke-width:1; stroke-dasharray:2 3}
+.ln{stroke:#566775; stroke-width:1.3; fill:none}
+.ln-acc{stroke:#0d7a7e; stroke-width:1.8; fill:none}
+.ln-seam{stroke:#a86b12; stroke-width:1.7; stroke-dasharray:7 4; fill:none}
+.ln-dash{stroke-dasharray:4 4}
+.ln-bus{stroke:#566775; stroke-width:3.5; fill:none; opacity:.55}
+.ln-life{stroke:#d3dce3; stroke-width:1.2; stroke-dasharray:3 4}
+.ah-acc{fill:#0d7a7e} .ah-mut{fill:#566775} .ah-seam{fill:#a86b12}
+.t-title{font:600 13px "IBM Plex Sans",Helvetica,Arial,sans-serif; fill:#14212b}
+.t-sub{font:11px "IBM Plex Mono",Menlo,Consolas,monospace; fill:#566775}
+.t-mono{font:11.5px "IBM Plex Mono",Menlo,Consolas,monospace; fill:#14212b}
+.t-lbl{font:11.5px "IBM Plex Sans",Helvetica,Arial,sans-serif; fill:#14212b}
+.t-edge{font:11px "IBM Plex Mono",Menlo,Consolas,monospace; fill:#566775}
+.t-head{font:600 12px "IBM Plex Mono",Menlo,Consolas,monospace; fill:#0d7a7e; letter-spacing:.04em}
+.t-tag{font:600 11px "IBM Plex Mono",Menlo,Consolas,monospace; fill:#0d7a7e}
+.tag-bg{fill:#ffffff; stroke:#0d7a7e; stroke-width:1.2}
+.lbl-bg{fill:#ffffff}
+</style><defs>
+<marker id="ah-acc" markerHeight="7" markerWidth="7" orient="auto-start-reverse" refX="10" refY="5" viewBox="0 0 10 10"><path fill="#0d7a7e" d="M0,0 L10,5 L0,10 z"></path></marker>
+<marker id="ah-mut" markerHeight="7" markerWidth="7" orient="auto-start-reverse" refX="10" refY="5" viewBox="0 0 10 10"><path fill="#566775" d="M0,0 L10,5 L0,10 z"></path></marker>
+<marker id="ah-seam" markerHeight="7" markerWidth="7" orient="auto-start-reverse" refX="10" refY="5" viewBox="0 0 10 10"><path fill="#a86b12" d="M0,0 L10,5 L0,10 z"></path></marker>
+</defs><rect x="0" y="0" width="1100" height="520" fill="#ffffff"/>
+<rect class="panel" height="500" rx="10" width="520" x="10" y="10"></rect>
+<text class="t-head" x="26" y="34">STORAGE META-MODEL (EVERY KIND)</text>
+<rect class="box" height="40" rx="7" width="120" x="230" y="48"></rect>
+<text class="t-title" text-anchor="middle" x="290" y="66">Root</text>
+<text class="t-sub" text-anchor="middle" x="290" y="81">graph_version</text>
+<rect class="box-acc" height="54" rx="8" width="180" x="40" y="130"></rect>
+<text class="t-title" text-anchor="middle" x="130" y="152">Node</text>
+<text class="t-sub" text-anchor="middle" x="130" y="170">:Node:InfraDevice:…</text>
+<rect class="box" height="44" rx="7" width="190" x="300" y="110"></rect>
+<text class="t-title" text-anchor="middle" x="395" y="129">Attribute</text>
+<text class="t-sub" text-anchor="middle" x="395" y="145">name=serial</text>
+<rect class="box" height="44" rx="7" width="190" x="300" y="190"></rect>
+<text class="t-title" text-anchor="middle" x="395" y="209">AttributeValue</text>
+<text class="t-sub" text-anchor="middle" x="395" y="225">value · indexed or not</text>
+<rect class="box" height="40" rx="7" width="190" x="300" y="262"></rect>
+<text class="t-title" text-anchor="middle" x="395" y="279">Boolean</text>
+<text class="t-sub" text-anchor="middle" x="395" y="294">is_protected flag</text>
+<rect class="box" height="54" rx="8" width="180" x="40" y="300"></rect>
+<text class="t-title" text-anchor="middle" x="130" y="322">Relationship</text>
+<text class="t-sub" text-anchor="middle" x="130" y="340">name=rack__device</text>
+<rect class="box" height="44" rx="7" width="190" x="300" y="330"></rect>
+<text class="t-title" text-anchor="middle" x="395" y="349">Node (peer)</text>
+<text class="t-sub" text-anchor="middle" x="395" y="365">:Node:InfraRack</text>
+<line class="ln" marker-end="url(#ah-mut)" x1="130" x2="236" y1="130" y2="90"></line>
+<text class="t-edge" x="198" y="124">IS_PART_OF</text>
+<line class="ln" marker-end="url(#ah-mut)" x1="220" x2="298" y1="150" y2="133"></line>
+<text class="t-edge" x="226" y="178">HAS_ATTRIBUTE</text>
+<line class="ln" marker-end="url(#ah-mut)" x1="395" x2="395" y1="154" y2="188"></line>
+<text class="t-edge" x="402" y="176">HAS_VALUE</text>
+<polyline class="ln" marker-end="url(#ah-mut)" points="490,132 512,132 512,282 492,282"></polyline>
+<text class="t-edge" text-anchor="end" x="506" y="252">IS_PROTECTED</text>
+<line class="ln" marker-end="url(#ah-mut)" x1="130" x2="130" y1="184" y2="298"></line>
+<text class="t-edge" x="138" y="246">IS_RELATED</text>
+<line class="ln" marker-end="url(#ah-mut)" x1="300" x2="222" y1="352" y2="332"></line>
+<text class="t-edge" x="228" y="374">IS_RELATED</text>
+<rect class="box-acc" height="64" rx="8" width="480" x="30" y="396"></rect>
+<text class="t-title" x="46" y="416">Every edge carries</text>
+<text class="t-mono" x="46" y="434">branch · branch_level · status</text>
+<text class="t-mono" x="46" y="451">from · to · from_user_id · to_user_id</text>
+<text class="t-edge" x="26" y="484">+ HAS_SOURCE / HAS_OWNER to any Node, per attribute</text>
+<text class="t-edge" x="26" y="500">+ IS_RESERVED{identifier} from pools (global branch)</text>
+<rect class="panel" height="500" rx="10" width="540" x="550" y="10"></rect>
+<text class="t-head" x="566" y="34">OUR FLEET AS INFRAHUB SCHEMA (SKETCH)</text>
+<rect class="box" height="44" rx="7" width="170" x="570" y="50"></rect>
+<text class="t-title" text-anchor="middle" x="655" y="69">Site</text>
+<text class="t-sub" text-anchor="middle" x="655" y="85">LocationSite</text>
+<rect class="box" height="44" rx="7" width="170" x="570" y="130"></rect>
+<text class="t-title" text-anchor="middle" x="655" y="149">Rack</text>
+<text class="t-sub" text-anchor="middle" x="655" y="165">InfraRack</text>
+<rect class="box-acc" height="60" rx="8" width="170" x="570" y="215"></rect>
+<text class="t-title" text-anchor="middle" x="655" y="235">GPU node</text>
+<text class="t-sub" text-anchor="middle" x="655" y="252">status: Dropdown</text>
+<text class="t-sub" text-anchor="middle" x="655" y="267">(no transition guards)</text>
+<rect class="box" height="44" rx="7" width="170" x="570" y="340"></rect>
+<text class="t-title" text-anchor="middle" x="655" y="359">PDU</text>
+<text class="t-sub" text-anchor="middle" x="655" y="375">device kind</text>
+<rect class="box-dash" height="44" rx="7" width="250" x="820" y="46"></rect>
+<text class="t-title" text-anchor="middle" x="945" y="65">TemplateGpuNode</text>
+<text class="t-sub" text-anchor="middle" x="945" y="81">generate_template: true</text>
+<rect class="box-dash" height="44" rx="7" width="250" x="820" y="110"></rect>
+<text class="t-title" text-anchor="middle" x="945" y="129">IP / Number pool</text>
+<text class="t-sub" text-anchor="middle" x="945" y="145">IS_RESERVED{identifier}</text>
+<rect class="box" height="34" rx="7" width="250" x="820" y="184"></rect>
+<text class="t-lbl" text-anchor="middle" x="945" y="205">GPU ×8 · serial, PCI address</text>
+<rect class="box" height="34" rx="7" width="250" x="820" y="228"></rect>
+<text class="t-lbl" text-anchor="middle" x="945" y="249">NIC port ×N · Interface</text>
+<rect class="box" height="34" rx="7" width="250" x="820" y="272"></rect>
+<text class="t-lbl" text-anchor="middle" x="945" y="293">PSU ×2</text>
+<rect class="box" height="34" rx="7" width="250" x="820" y="340"></rect>
+<text class="t-lbl" text-anchor="middle" x="945" y="361">PDU outlet</text>
+<rect class="box" height="34" rx="7" width="250" x="820" y="410"></rect>
+<text class="t-lbl" text-anchor="middle" x="945" y="431">Leaf switch port</text>
+<line class="ln-acc" marker-end="url(#ah-acc)" x1="655" x2="655" y1="130" y2="96"></line>
+<text class="t-edge" text-anchor="end" x="648" y="117">Parent</text>
+<line class="ln-acc" marker-end="url(#ah-acc)" x1="655" x2="655" y1="215" y2="176"></line>
+<text class="t-edge" text-anchor="end" x="648" y="200">Parent</text>
+<polyline class="ln-acc" marker-end="url(#ah-acc)" points="570,362 556,362 556,152 568,152"></polyline>
+<line class="ln" marker-end="url(#ah-mut)" x1="740" x2="818" y1="245" y2="201"></line>
+<line class="ln" marker-end="url(#ah-mut)" x1="740" x2="818" y1="245" y2="245"></line>
+<line class="ln" marker-end="url(#ah-mut)" x1="740" x2="818" y1="245" y2="289"></line>
+<text class="t-edge" x="748" y="310">Component</text>
+<line class="ln" marker-end="url(#ah-mut)" x1="740" x2="818" y1="362" y2="357"></line>
+<text class="t-edge" x="748" y="384">Component</text>
+<line class="ln" marker-end="url(#ah-mut)" x1="945" x2="945" y1="340" y2="308"></line>
+<text class="t-edge" x="952" y="328">feeds (Generic)</text>
+<polyline class="ln" marker-end="url(#ah-mut)" points="1070,245 1082,245 1082,427 1072,427"></polyline>
+<text class="t-edge" text-anchor="end" x="1076" y="398">cable (Generic)</text>
+<line class="ln-acc ln-dash" marker-end="url(#ah-acc)" x1="820" x2="742" y1="68" y2="222"></line>
+<line class="ln-acc ln-dash" marker-end="url(#ah-acc)" x1="820" x2="742" y1="140" y2="238"></line>
+<text class="t-edge" x="566" y="474">Authoritative: the default branch in Neo4j.</text>
+<text class="t-edge" x="566" y="490">Branches are proposals. Diffs, events and GraphQL types are derived.</text>
+</svg>
